@@ -1,0 +1,1701 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-07-24T11:04:51Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 999797012,
+  "lat": -35.9787951,
+  "lon": -62.7297199,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "name": "Hotel El Faro",
+    "tourism": "hotel"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051602,
+  "lat": -35.9738116,
+  "lon": -62.7333403,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "townhall",
+    "name": "Palacio Municipal",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051608,
+  "lat": -35.9727727,
+  "lon": -62.7335370,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bank",
+    "atm": "yes",
+    "brand": "Banco Provincia",
+    "brand:es": "Banco Provincia",
+    "brand:wikidata": "Q4856209",
+    "brand:wikipedia": "es:Banco de la Provincia de Buenos Aires",
+    "name": "Banco Provincia",
+    "name:es": "Banco Provincia",
+    "official_name": "Banco de la Provincia de Buenos Aires",
+    "official_name:es": "Banco de la Provincia de Buenos Aires",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051630,
+  "lat": -35.9724620,
+  "lon": -62.7337958,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bank",
+    "atm": "yes",
+    "brand": "Galicia",
+    "brand:wikidata": "Q5717952",
+    "brand:wikipedia": "es:Banco Galicia",
+    "name": "Galicia"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051640,
+  "lat": -35.9743731,
+  "lon": -62.7340842,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "police",
+    "name": "Comisaría"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051646,
+  "lat": -35.9731632,
+  "lon": -62.7342072,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "theatre",
+    "name": "Teatro Español"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051655,
+  "lat": -35.9739896,
+  "lon": -62.7320083,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "place_of_worship",
+    "denomination": "catholic",
+    "name": "Nuestra Señora de los Dolores",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051677,
+  "lat": -35.9743829,
+  "lon": -62.7330520,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bank",
+    "atm": "yes",
+    "brand": "Banco Nación",
+    "brand:es": "Banco Nación",
+    "brand:wikidata": "Q2883376",
+    "brand:wikipedia": "es:Banco de la Nación Argentina",
+    "contact:website": "http://www.bna.com.ar/",
+    "name": "Banco Nación",
+    "name:es": "Banco Nación",
+    "official_name": "Banco de la Nación Argentina",
+    "official_name:es": "Banco de la Nación Argentina",
+    "short_name": "BNA"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051692,
+  "lat": -35.9746414,
+  "lon": -62.7321758,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "library",
+    "name": "Biblioteca Rivadavia",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051699,
+  "lat": -35.9744156,
+  "lon": -62.7329590,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bar",
+    "name": "LCDV"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051710,
+  "lat": -35.9741447,
+  "lon": -62.7342541,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "post_office",
+    "brand": "Correo Argentino",
+    "brand:wikidata": "Q4036566",
+    "brand:wikipedia": "es:Correo Oficial de la República Argentina",
+    "contact:website": "http://www.correoargentino.com.ar/",
+    "name": "Correo Argentino",
+    "official_name": "Correo Oficial de la República Argentina",
+    "operator": "Correo Argentino",
+    "operator:type": "public",
+    "operator:wikidata": "Q4036566",
+    "operator:wikipedia": "es:Correo Oficial de la República Argentina"
+  }
+},
+{
+  "type": "node",
+  "id": 1695051713,
+  "lat": -35.9721820,
+  "lon": -62.7350032,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "cinema",
+    "name": "Cine Barrio Alegre"
+  }
+},
+{
+  "type": "node",
+  "id": 1695072052,
+  "lat": -35.9736697,
+  "lon": -62.7334367,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "name": "Informes y Turismo",
+    "tourism": "information",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1695072058,
+  "lat": -35.9739728,
+  "lon": -62.7332057,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bar",
+    "name": "Trezzo Cafe Bar",
+    "toilets:wheelchair": "no",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 1695210272,
+  "lat": -35.9719762,
+  "lon": -62.7364280,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "fuel",
+    "brand": "Shell",
+    "brand:wikidata": "Q110716465",
+    "fuel:diesel": "yes",
+    "fuel:octane_95": "yes",
+    "fuel:octane_98": "yes",
+    "name": "Shell",
+    "operator": "DAVIS Y HERNANDEZ S.R.L."
+  }
+},
+{
+  "type": "node",
+  "id": 1695210279,
+  "lat": -35.9715730,
+  "lon": -62.7328350,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "internet_access": "yes",
+    "internet_access:fee": "no",
+    "name": "Hotel Trenque Lauquen",
+    "smoking": "separated",
+    "tourism": "hotel",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 1695210293,
+  "lat": -35.9746205,
+  "lon": -62.7343880,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "fuel",
+    "brand": "YPF",
+    "brand:wikidata": "Q2006989",
+    "brand:wikipedia": "es:YPF",
+    "fuel:diesel": "yes",
+    "fuel:octane_95": "yes",
+    "fuel:octane_98": "yes",
+    "name": "YPF",
+    "operator": "DON PACO COMBUSTIBLE SRL",
+    "phone": "+54 2392 42-3190"
+  }
+},
+{
+  "type": "node",
+  "id": 1695210294,
+  "lat": -35.9712069,
+  "lon": -62.7330181,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "fuel",
+    "brand": "YPF",
+    "brand:wikidata": "Q2006989",
+    "brand:wikipedia": "es:YPF",
+    "fuel:diesel": "yes",
+    "fuel:octane_95": "yes",
+    "fuel:octane_98": "yes",
+    "name": "YPF",
+    "operator": "PETROGUAZZ SA",
+    "phone": "+54 9 2392 53-6882"
+  }
+},
+{
+  "type": "node",
+  "id": 1741070652,
+  "lat": -35.9707776,
+  "lon": -62.7366447,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "hospital",
+    "emergency": "yes",
+    "healthcare": "hospital",
+    "name": "Clínica Trenque Lauquen"
+  }
+},
+{
+  "type": "node",
+  "id": 1741070653,
+  "lat": -35.9746875,
+  "lon": -62.7354299,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "name": "Parada Taxi",
+    "shop": "alcohol"
+  }
+},
+{
+  "type": "node",
+  "id": 1741070654,
+  "lat": -35.9689889,
+  "lon": -62.7360064,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "name": "Sol Asiatico",
+    "shop": "supermarket"
+  }
+},
+{
+  "type": "node",
+  "id": 1741070655,
+  "lat": -35.9680684,
+  "lon": -62.7377444,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "bar",
+    "name": "Riel & Co. Bar o Bar"
+  }
+},
+{
+  "type": "node",
+  "id": 1741070656,
+  "lat": -35.9710156,
+  "lon": -62.7353702,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bar",
+    "cuisine": "pizza",
+    "name": "Buin Bar"
+  }
+},
+{
+  "type": "node",
+  "id": 1741071024,
+  "lat": -35.9740684,
+  "lon": -62.7348798,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bank",
+    "atm": "yes",
+    "brand": "Banco de La Pampa",
+    "brand:wikidata": "Q131844530",
+    "name": "Banco de La Pampa"
+  }
+},
+{
+  "type": "node",
+  "id": 1807864450,
+  "lat": -36.0140242,
+  "lon": -62.7510511,
+  "tags": {
+    "amenity": "fuel",
+    "branch": "Estación N° 116",
+    "brand": "YPF",
+    "fuel:diesel": "yes",
+    "fuel:diesel_G2": "yes",
+    "fuel:octane_95": "yes",
+    "fuel:octane_98": "yes",
+    "name": "ACA TRENQUE LAUQUEN",
+    "operator": "OPESSA ACA TRENQUE LAUQUEN"
+  }
+},
+{
+  "type": "node",
+  "id": 1808063287,
+  "lat": -35.9912319,
+  "lon": -62.7013148,
+  "tags": {
+    "amenity": "fuel",
+    "brand": "Puma",
+    "fuel:diesel": "yes",
+    "fuel:octane_95": "yes",
+    "fuel:octane_98": "yes",
+    "name": "Puma",
+    "operator": "DINALU S.A."
+  }
+},
+{
+  "type": "node",
+  "id": 1808063341,
+  "lat": -36.0011981,
+  "lon": -62.7211073,
+  "tags": {
+    "amenity": "fuel",
+    "brand": "YPF",
+    "fuel:diesel": "yes",
+    "fuel:octane_95": "yes",
+    "fuel:octane_98": "yes",
+    "name": "ACA Trenque Lauquen",
+    "opening_hours": "24/7",
+    "operator": "OPESSA OPELAUQUEN",
+    "phone": "+54 2392 42-2042;+54 2392 43-2727"
+  }
+},
+{
+  "type": "node",
+  "id": 1809299590,
+  "lat": -35.9654029,
+  "lon": -62.7215071,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "place_of_worship",
+    "denomination": "catholic",
+    "name": "Capilla Nuestra Señora de Fátima",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 1809299591,
+  "lat": -35.9645218,
+  "lon": -62.7364549,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "place_of_worship",
+    "building": "chapel",
+    "denomination": "catholic",
+    "name": "Capilla Nuestra Señora de Luján",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 1809299592,
+  "lat": -35.9746731,
+  "lon": -62.7471677,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "place_of_worship",
+    "denomination": "catholic",
+    "name": "Capilla de Lourdes",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 1809299593,
+  "lat": -35.9798429,
+  "lon": -62.7354683,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "place_of_worship",
+    "denomination": "catholic",
+    "name": "Capilla de la Medalla Milagrosa",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 1809299594,
+  "lat": -35.9658829,
+  "lon": -62.7363130,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "arts_centre",
+    "name": "Centro Polivalente de Arte"
+  }
+},
+{
+  "type": "node",
+  "id": 1809299596,
+  "lat": -35.9667183,
+  "lon": -62.7187263,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Escuela 35"
+  }
+},
+{
+  "type": "node",
+  "id": 1809299597,
+  "lat": -35.9641155,
+  "lon": -62.7356568,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Escuela Nro 5"
+  }
+},
+{
+  "type": "node",
+  "id": 1809299598,
+  "lat": -35.9737578,
+  "lon": -62.7406895,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "place_of_worship",
+    "denomination": "pentecostal",
+    "name": "Iglesia Pentecostal",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322912,
+  "lat": -35.9742059,
+  "lon": -62.7307368,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "hospital",
+    "healthcare": "hospital",
+    "name": "Anexo Hospital Municipal"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322932,
+  "lat": -35.9732977,
+  "lon": -62.7344503,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bank",
+    "atm": "yes",
+    "brand": "Credicoop",
+    "brand:wikidata": "Q4854086",
+    "name": "Credicoop"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322939,
+  "lat": -35.9774218,
+  "lon": -62.7363259,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "466",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Leandro N. Alem",
+    "amenity": "fire_station",
+    "building": "fire_station",
+    "contact:email": "secretaria@bomberostl.org;cuerpoactivo@bomberostl.org;ayudantia@bomberostl.org;administracion@bomberostl.org",
+    "contact:facebook": "https://www.facebook.com/bomberoshoy/",
+    "name": "Bomberos Voluntarios de Trenque Lauquén",
+    "phone": "+54 2392 422100;+54 2392 430333",
+    "website": "https://www.bomberostl.org/"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322951,
+  "lat": -35.9709793,
+  "lon": -62.7287651,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Colegio Di Gerónimo"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322954,
+  "lat": -35.9659524,
+  "lon": -62.7297962,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Colegio Nuestra Señora del Rosario"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322958,
+  "lat": -35.9693475,
+  "lon": -62.7327111,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Colegio Politécnico"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322963,
+  "lat": -35.9735336,
+  "lon": -62.7295187,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Escuela Nro 1"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322981,
+  "lat": -35.9721441,
+  "lon": -62.7379613,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Escuela Nro 2"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322984,
+  "lat": -35.9778587,
+  "lon": -62.7313648,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Escuela Nro 8"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322987,
+  "lat": -35.9702308,
+  "lon": -62.7337653,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "place_of_worship",
+    "denomination": "baptist",
+    "name": "Iglesia Bautista",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 1809322994,
+  "lat": -35.9701796,
+  "lon": -62.7327073,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "place_of_worship",
+    "denomination": "catholic",
+    "name": "Iglesia Menonita",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 1809323001,
+  "lat": -35.9667303,
+  "lon": -62.7313324,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Instituto de Formación Docente"
+  }
+},
+{
+  "type": "node",
+  "id": 1809323005,
+  "lat": -35.9715943,
+  "lon": -62.7281803,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "kindergarten",
+    "name": "Jardín Corazón"
+  }
+},
+{
+  "type": "node",
+  "id": 1809323010,
+  "lat": -35.9717476,
+  "lon": -62.7382827,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "kindergarten",
+    "name": "Jardín Nro 1"
+  }
+},
+{
+  "type": "node",
+  "id": 1809323017,
+  "lat": -35.9757308,
+  "lon": -62.7273634,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "name": "Museo Almafuerte",
+    "tourism": "museum"
+  }
+},
+{
+  "type": "node",
+  "id": 1809323024,
+  "lat": -35.9726378,
+  "lon": -62.7332040,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "courthouse",
+    "name": "Poder Judicial"
+  }
+},
+{
+  "type": "node",
+  "id": 1809323049,
+  "lat": -35.9720224,
+  "lon": -62.7336601,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "courthouse",
+    "name": "Tribunales"
+  }
+},
+{
+  "type": "node",
+  "id": 2401952961,
+  "lat": -35.9734767,
+  "lon": -62.7347863,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bank",
+    "atm": "yes",
+    "brand": "Banco Patagonia",
+    "brand:wikidata": "Q2882078",
+    "brand:wikipedia": "es:Banco Patagonia",
+    "name": "Banco Patagonia"
+  }
+},
+{
+  "type": "node",
+  "id": 2923748228,
+  "lat": -35.9858984,
+  "lon": -62.7268404,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "298",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Racedo",
+    "amenity": "university",
+    "name": "Universidad Tecnológica Nacional",
+    "website": "http://www.frtl.utn.edu.ar/"
+  }
+},
+{
+  "type": "node",
+  "id": 2931055171,
+  "lat": -35.9723723,
+  "lon": -62.7338641,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "bank",
+    "atm": "yes",
+    "brand": "BBVA",
+    "brand:wikidata": "Q806189",
+    "brand:wikipedia": "es:BBVA (Argentina)",
+    "name": "BBVA",
+    "official_name": "Banco Bilbao Vizcaya Argentaria",
+    "old_name": "BBVA Francés",
+    "phone:AR": "0800-333-0303",
+    "website": "https://www.bbva.com.ar"
+  }
+},
+{
+  "type": "node",
+  "id": 2934663701,
+  "lat": -35.9704900,
+  "lon": -62.7341150,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "amenity": "bank",
+    "atm": "yes",
+    "brand": "Macro",
+    "brand:wikidata": "Q2335199",
+    "brand:wikipedia": "en:Banco Macro",
+    "name": "Macro"
+  }
+},
+{
+  "type": "node",
+  "id": 2934663702,
+  "lat": -35.9873374,
+  "lon": -62.7571292,
+  "tags": {
+    "amenity": "place_of_worship",
+    "name": "Cementerio Municipal"
+  }
+},
+{
+  "type": "node",
+  "id": 2934663703,
+  "lat": -35.9726303,
+  "lon": -62.7359223,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "nightclub",
+    "name": "Dom Disco",
+    "smoking": "separated",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2934663704,
+  "lat": -35.9721835,
+  "lon": -62.7340549,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "pharmacy",
+    "dispensing": "no",
+    "healthcare": "pharmacy",
+    "name": "Mayo"
+  }
+},
+{
+  "type": "node",
+  "id": 2934663705,
+  "lat": -35.9715071,
+  "lon": -62.7272587,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "internet_access": "yes",
+    "internet_access:fee": "no",
+    "name": "Hotel Sorrento",
+    "smoking": "isolated",
+    "stars": "4",
+    "tourism": "hotel",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2934663706,
+  "lat": -35.9863096,
+  "lon": -62.7212256,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Los Médanos"
+  }
+},
+{
+  "type": "node",
+  "id": 2934663707,
+  "lat": -35.9730347,
+  "lon": -62.7339324,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "name": "Naldo Lombardi",
+    "shop": "electronics",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 2934666052,
+  "lat": -35.9720464,
+  "lon": -62.7347208,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "name": "Pardo",
+    "shop": "electronics",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 2934666053,
+  "lat": -35.9706521,
+  "lon": -62.7346770,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bar",
+    "name": "Pepe Botella"
+  }
+},
+{
+  "type": "node",
+  "id": 3206526645,
+  "lat": -35.9899613,
+  "lon": -62.7313232,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Colegio Buen Ayre"
+  }
+},
+{
+  "type": "node",
+  "id": 3398176258,
+  "lat": -35.9730998,
+  "lon": -62.7351033,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "name": "Inmobiliaria Ernesto Paso",
+    "office": "estate_agent"
+  }
+},
+{
+  "type": "node",
+  "id": 3802854247,
+  "lat": -35.9798977,
+  "lon": -62.7438757,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "fuel",
+    "brand": "RefiPampa",
+    "fuel:diesel": "yes",
+    "fuel:octane_95": "yes",
+    "fuel:octane_98": "yes",
+    "name": "Voy",
+    "operator": "ESTACION ORO DE MARQUEZ RICARDO PACHECO JUAN C ZEMMA ROBERTO O Y DISTACIO MARIO"
+  }
+},
+{
+  "type": "node",
+  "id": 4028597406,
+  "lat": -36.0008214,
+  "lon": -62.7203700,
+  "tags": {
+    "brand": "Bridgestone",
+    "name": "Petrolauquen",
+    "operator": "PETROLAUQUEN S A",
+    "phone": "+54 2392 43-0575;+54 2392 43-1662",
+    "service": "repair",
+    "shop": "tyres",
+    "website": "http://www.petrolauquen.com.ar/"
+  }
+},
+{
+  "type": "node",
+  "id": 4097419117,
+  "lat": -35.9699859,
+  "lon": -62.7248889,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "517",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Gobernador Irigoyen",
+    "amenity": "pharmacy",
+    "healthcare": "pharmacy",
+    "name": "Casa de familia"
+  }
+},
+{
+  "type": "node",
+  "id": 4106926101,
+  "lat": -35.9590565,
+  "lon": -62.7457695,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "330",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Curie",
+    "name": "E.P.Nº 46 \"José Bisignano\"",
+    "office": "educational_institution"
+  }
+},
+{
+  "type": "node",
+  "id": 4106935349,
+  "lat": -35.9900389,
+  "lon": -62.7662807,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:postcode": "6400",
+    "addr:street": "Presidente Juan Domingo Perón",
+    "amenity": "place_of_worship",
+    "name": "Ermita Virgen del Desierto",
+    "religion": "christian"
+  }
+},
+{
+  "type": "node",
+  "id": 4494125791,
+  "lat": -35.9687085,
+  "lon": -62.7367853,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "name": "Multicompras",
+    "name:es": "Multicompras",
+    "shop": "gift"
+  }
+},
+{
+  "type": "node",
+  "id": 4513693814,
+  "lat": -36.0013465,
+  "lon": -62.7208527,
+  "tags": {
+    "brand": "Full",
+    "brand:wikidata": "Q126681765",
+    "name": "Full",
+    "opening_hours": "24/7",
+    "shop": "convenience"
+  }
+},
+{
+  "type": "node",
+  "id": 5052513434,
+  "lat": -35.9614875,
+  "lon": -62.7220725,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "1105",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Derqui",
+    "amenity": "school",
+    "name": "Escuela Primaria 47"
+  }
+},
+{
+  "type": "node",
+  "id": 5054709766,
+  "lat": -35.9608498,
+  "lon": -62.7226099,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "1100",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Rivadavia",
+    "amenity": "hospital",
+    "healthcare": "hospital",
+    "name": "Centro de Salud \"Ramón Carrillo\""
+  }
+},
+{
+  "type": "node",
+  "id": 5345655402,
+  "lat": -35.9908765,
+  "lon": -62.7678886,
+  "tags": {
+    "name": "La Gomería",
+    "service": "tyres;repair",
+    "shop": "car_repair"
+  }
+},
+{
+  "type": "node",
+  "id": 5561815622,
+  "lat": -35.9924905,
+  "lon": -62.7298488,
+  "tags": {
+    "name": "10 de diciembre",
+    "shop": "variety_store"
+  }
+},
+{
+  "type": "node",
+  "id": 5706548621,
+  "lat": -35.9767472,
+  "lon": -62.7309597,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "867",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Villegas",
+    "amenity": "ice_cream",
+    "name": "Helados Galván",
+    "opening_hours": "Mo-Su 10:00-01:30",
+    "website": "https://www.facebook.com/HeladosGalvan/",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 6693596656,
+  "lat": -35.9655231,
+  "lon": -62.7352318,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "153",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "12 de Abril",
+    "amenity": "community_centre",
+    "club": "scout",
+    "community_centre": "home_club",
+    "fixme": "revisar posición y direccón",
+    "name": "Grupo Scout General José de San Martín",
+    "network": "Scouts de Argentina",
+    "opening_hours": "Sa 15:00-18:00",
+    "ref": "1194"
+  }
+},
+{
+  "type": "node",
+  "id": 6693597108,
+  "lat": -35.9713044,
+  "lon": -62.7484640,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "50",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Pacheco",
+    "amenity": "community_centre",
+    "club": "scout",
+    "community_centre": "home_club",
+    "fixme": "revisar posición y direccón",
+    "name": "Grupo Scout General Conrado E. Villegas",
+    "network": "Scouts de Argentina",
+    "opening_hours": "Sa 15:00-18:00",
+    "ref": "1047"
+  }
+},
+{
+  "type": "node",
+  "id": 6757568325,
+  "lat": -35.9705853,
+  "lon": -62.7472813,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Hernández",
+    "amenity": "coworking_space",
+    "name": "Polo científico tecnológico"
+  }
+},
+{
+  "type": "node",
+  "id": 6757570994,
+  "lat": -35.9705928,
+  "lon": -62.7472900,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Hernández",
+    "amenity": "coworking_space",
+    "name": "Polo científico"
+  }
+},
+{
+  "type": "node",
+  "id": 6757578054,
+  "lat": -35.9709764,
+  "lon": -62.7463040,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Hernández",
+    "craft": "blacksmith",
+    "description": "herrería municipal",
+    "name": "Herrería municipal"
+  }
+},
+{
+  "type": "node",
+  "id": 6757602959,
+  "lat": -35.9705836,
+  "lon": -62.7472991,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Hernández",
+    "amenity": "coworking_space",
+    "description": "replanteo",
+    "name": "Polo cientifico tecnológico"
+  }
+},
+{
+  "type": "node",
+  "id": 6757643557,
+  "lat": -35.9732079,
+  "lon": -62.7287378,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Dorrego 675",
+    "amenity": "kindergarten",
+    "description": "relevamiento",
+    "name": "Jardín 902 General José De San Martín"
+  }
+},
+{
+  "type": "node",
+  "id": 6757731063,
+  "lat": -35.9632761,
+  "lon": -62.7274938,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Rivadavia",
+    "description": "Relevamiento",
+    "name": "Carnicería La Pantera",
+    "shop": "butcher"
+  }
+},
+{
+  "type": "node",
+  "id": 7745711257,
+  "lat": -35.9741306,
+  "lon": -62.7332797,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Fray Justo Santa María de Oro",
+    "description": "Jurisdicciones de la delegación: TRENQUE LAUQUEN - GUAMINI - PELLEGRINI - RIVADAVIA - SALLIQUELO - TRES LOMAS",
+    "email": "dtlauquen@trabajo.gba.gov.ar",
+    "name": "Delegación Regional Ministerio de Trabajo",
+    "office": "government",
+    "official_name": "Delegación Regional Ministerio de Trabajo de la Provincia de Buenos Aires",
+    "phone": "+54 2392 42 4300",
+    "source": "https://www.trabajo.gba.gov.ar/index.php/delegaciones-regionales"
+  }
+},
+{
+  "type": "node",
+  "id": 8131339005,
+  "lat": -35.9852022,
+  "lon": -62.7518787,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "fuel",
+    "brand": "Bandera Blanca",
+    "name": "Abastecimiento para vehiculos municipales",
+    "operator": "Municipalidad de Trenque Lauquen"
+  }
+},
+{
+  "type": "node",
+  "id": 9035442770,
+  "lat": -35.9648654,
+  "lon": -62.7328949,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:housenumber": "16",
+    "addr:postcode": "6400",
+    "addr:street": "Almirante Brown Bis",
+    "museum": "history",
+    "name": "Museo de los Carruajes",
+    "tourism": "museum"
+  }
+},
+{
+  "type": "node",
+  "id": 9035458180,
+  "lat": -35.9796929,
+  "lon": -62.7267040,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:housenumber": "2",
+    "addr:postcode": "6400",
+    "addr:street": "Luis Scalesse",
+    "amenity": "theatre",
+    "name": "Casa De La Historia Y La Cultura del Bicentenario"
+  }
+},
+{
+  "type": "node",
+  "id": 9424978299,
+  "lat": -35.9731007,
+  "lon": -62.7358664,
+  "tags": {
+    "addr:housenumber": "230",
+    "addr:street": "9 de Julio",
+    "amenity": "fast_food",
+    "contact:facebook": "https://m.facebook.com/laempanaderia/",
+    "contact:mobile": "+542392557733",
+    "contact:phone": "+542392423043",
+    "delivery": "yes",
+    "name": "La Empanadería",
+    "takeaway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9559453914,
+  "lat": -35.9914364,
+  "lon": -62.7013510,
+  "tags": {
+    "amenity": "restaurant",
+    "name": "Keu ken"
+  }
+},
+{
+  "type": "node",
+  "id": 12584809387,
+  "lat": -35.9708752,
+  "lon": -62.7389094,
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:housenumber": "143",
+    "addr:postcode": "6400",
+    "addr:street": "Avellaneda",
+    "description": "SAMI es la Obra Social del Circulo Médico de Trenque Lauquen",
+    "email": "sami@cmtl.com.ar",
+    "name": "SAMI",
+    "office": "company",
+    "phone": "+54 2392 422520",
+    "website": "https://sami.metaok.com/"
+  }
+},
+{
+  "type": "way",
+  "id": 169630227,
+  "center": {
+    "lat": -35.9780332,
+    "lon": -62.7276700
+  },
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "building": "yes",
+    "name": "Hogar del Niño"
+  }
+},
+{
+  "type": "way",
+  "id": 169633098,
+  "center": {
+    "lat": -35.9796032,
+    "lon": -62.7276465
+  },
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "brand": "La Anónima",
+    "brand:wikidata": "Q6135985",
+    "brand:wikipedia": "es:La Anónima",
+    "building": "yes",
+    "name": "La Anónima",
+    "shop": "supermarket",
+    "website": "https://www.laanonima.com.ar/sucursales/103-trenque-lauquen"
+  }
+},
+{
+  "type": "way",
+  "id": 169633099,
+  "center": {
+    "lat": -35.9780121,
+    "lon": -62.7291428
+  },
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "bus_station",
+    "bus": "yes",
+    "name": "Terminal de Ómnibus",
+    "public_transport": "station"
+  }
+},
+{
+  "type": "way",
+  "id": 169763956,
+  "center": {
+    "lat": -35.9750733,
+    "lon": -62.7278684
+  },
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "hospital",
+    "healthcare": "hospital",
+    "name": "Hospital Municipal"
+  }
+},
+{
+  "type": "way",
+  "id": 169772137,
+  "center": {
+    "lat": -35.9848093,
+    "lon": -62.7385420
+  },
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "amenity": "school",
+    "name": "Escuela Técnica"
+  }
+},
+{
+  "type": "way",
+  "id": 289552702,
+  "center": {
+    "lat": -35.9858708,
+    "lon": -62.7266769
+  },
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:housenumber": "298",
+    "addr:postcode": "6400",
+    "addr:street": "Racedo",
+    "amenity": "university",
+    "name": "UTN Trenque Laquen",
+    "website": "http://www.frtl.utn.edu.ar/"
+  }
+},
+{
+  "type": "way",
+  "id": 581704684,
+  "center": {
+    "lat": -35.9744067,
+    "lon": -62.7315065
+  },
+  "tags": {
+    "addr:city": "Trenque Lauquen",
+    "addr:country": "AR",
+    "addr:housenumber": "37",
+    "addr:postcode": "6400",
+    "addr:province": "Buenos Aires",
+    "addr:state": "Buenos Aires",
+    "addr:street": "Leandro N. Alem",
+    "brand": "Honda",
+    "brand:wikidata": "Q9584",
+    "brand:wikipedia": "es:Honda",
+    "building": "yes",
+    "building:levels": "2",
+    "motorcycle:parts": "yes",
+    "motorcycle:repair": "yes",
+    "name": "Motos Colón Juniors",
+    "phone": "+54 2392 42-2573",
+    "shop": "motorcycle"
+  }
+},
+{
+  "type": "way",
+  "id": 1425598291,
+  "center": {
+    "lat": -35.9704393,
+    "lon": -62.7277753
+  },
+  "tags": {
+    "amenity": "veterinary",
+    "building": "yes",
+    "name": "Veterinaria Arzac"
+  }
+}
+
+  ]
+}

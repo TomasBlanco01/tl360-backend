@@ -1,0 +1,8 @@
+/target
+.env
+tools/node_modules
+tools/data
+db/seed/02_empresas.sql
+tools/.pgdata
+tools/*.log
+*.log

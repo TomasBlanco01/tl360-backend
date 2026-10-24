@@ -1,0 +1,1770 @@
+[
+ {
+  "slug": "oficios",
+  "nombre": "Oficios"
+ },
+ {
+  "slug": "profesionales",
+  "nombre": "Profesionales"
+ },
+ {
+  "slug": "tramites-y-oficinas",
+  "nombre": "Trámites y Oficinas"
+ },
+ {
+  "slug": "farmacias-de-turno-en-trenque-lauquen",
+  "nombre": "Farmacias de Turno"
+ },
+ {
+  "slug": "gastronomia",
+  "nombre": "Gastronomía"
+ },
+ {
+  "slug": "hospedaje-en-trenque-lauquen",
+  "nombre": "Hospedajes"
+ },
+ {
+  "slug": "medicos",
+  "nombre": "Médicos Salud"
+ },
+ {
+  "slug": "automotores",
+  "nombre": "Automotores"
+ },
+ {
+  "slug": "campos",
+  "nombre": "Campos"
+ },
+ {
+  "slug": "construcciones",
+  "nombre": "Construcciones"
+ },
+ {
+  "slug": "estudios",
+  "nombre": "Estudios"
+ },
+ {
+  "slug": "eventos",
+  "nombre": "Eventos"
+ },
+ {
+  "slug": "micros",
+  "nombre": "Micros Terminal de ómnibus"
+ },
+ {
+  "slug": "transportes",
+  "nombre": "Transportes"
+ },
+ {
+  "slug": "aberturas",
+  "nombre": "Aberturas"
+ },
+ {
+  "slug": "abogados",
+  "nombre": "Abogados"
+ },
+ {
+  "slug": "acompanante-terapeutico",
+  "nombre": "Acompañante Terapéutico"
+ },
+ {
+  "slug": "afilados",
+  "nombre": "Afilados"
+ },
+ {
+  "slug": "agenciadeloteria",
+  "nombre": "Agencia de Lotería"
+ },
+ {
+  "slug": "agencias-automotores",
+  "nombre": "Agencias Automotores"
+ },
+ {
+  "slug": "agenciasdemotos",
+  "nombre": "Agencias de Motos"
+ },
+ {
+  "slug": "agencias-de-turismo",
+  "nombre": "Agencias de Turismo"
+ },
+ {
+  "slug": "agriculturadeprecision",
+  "nombre": "Agricultura de Precisión"
+ },
+ {
+  "slug": "agrimensores",
+  "nombre": "Agrimensores"
+ },
+ {
+  "slug": "agroinsumos",
+  "nombre": "Agro Insumos"
+ },
+ {
+  "slug": "aguaminerales",
+  "nombre": "Agua Minerales"
+ },
+ {
+  "slug": "aguadas",
+  "nombre": "Aguadas"
+ },
+ {
+  "slug": "aireacondicionados",
+  "nombre": "Aire Acondicionados"
+ },
+ {
+  "slug": "alambradores",
+  "nombre": "Alambradores"
+ },
+ {
+  "slug": "alarmas",
+  "nombre": "Alarmas"
+ },
+ {
+  "slug": "albaniles",
+  "nombre": "Albañiles"
+ },
+ {
+  "slug": "alergistas",
+  "nombre": "Alergistas"
+ },
+ {
+  "slug": "alimentosbalanceados",
+  "nombre": "Alimentos Balanceados"
+ },
+ {
+  "slug": "alineacion",
+  "nombre": "Alineación"
+ },
+ {
+  "slug": "almacen",
+  "nombre": "Almacén"
+ },
+ {
+  "slug": "alojamientos",
+  "nombre": "Alojamientos"
+ },
+ {
+  "slug": "alquilerdeautos",
+  "nombre": "Alquiler de Autos"
+ },
+ {
+  "slug": "alquiler-de-salones",
+  "nombre": "Alquiler de Salones"
+ },
+ {
+  "slug": "alquilerdevajillas",
+  "nombre": "Alquiler de Vajillas"
+ },
+ {
+  "slug": "alquilerdeherramientas",
+  "nombre": "Alquiler Herramientas"
+ },
+ {
+  "slug": "alquileres-temporarios",
+  "nombre": "Alquileres Temporarios"
+ },
+ {
+  "slug": "aluminios",
+  "nombre": "Aluminios"
+ },
+ {
+  "slug": "amoblamientos",
+  "nombre": "Amoblamientos"
+ },
+ {
+  "slug": "anestesistas",
+  "nombre": "Anestesistas"
+ },
+ {
+  "slug": "animaciones",
+  "nombre": "Animaciones"
+ },
+ {
+  "slug": "antiguedades",
+  "nombre": "Antiguedades"
+ },
+ {
+  "slug": "apicultores",
+  "nombre": "Apicultores"
+ },
+ {
+  "slug": "arenados",
+  "nombre": "Arenados"
+ },
+ {
+  "slug": "armerias",
+  "nombre": "Armerías"
+ },
+ {
+  "slug": "arquitectos",
+  "nombre": "Arquitectos"
+ },
+ {
+  "slug": "artes-marciales",
+  "nombre": "Artes Marciales"
+ },
+ {
+  "slug": "artesanias",
+  "nombre": "Artesanías"
+ },
+ {
+  "slug": "articulos-de-limpieza",
+  "nombre": "Artículos de Limpieza"
+ },
+ {
+  "slug": "articulosparaelhogar",
+  "nombre": "Artículos Para el Hogar"
+ },
+ {
+  "slug": "autoelevadores",
+  "nombre": "Autoelevadores"
+ },
+ {
+  "slug": "automatizacion-de-portones",
+  "nombre": "Automatización de Portones"
+ },
+ {
+  "slug": "autopartes",
+  "nombre": "Autopartes"
+ },
+ {
+  "slug": "autoservicios",
+  "nombre": "Autoservicios"
+ },
+ {
+  "slug": "auxilios",
+  "nombre": "Auxilios"
+ },
+ {
+  "slug": "avicolas",
+  "nombre": "Avícolas"
+ },
+ {
+  "slug": "baile",
+  "nombre": "Baile"
+ },
+ {
+  "slug": "balanceo",
+  "nombre": "Balanceo"
+ },
+ {
+  "slug": "bancos",
+  "nombre": "Bancos"
+ },
+ {
+  "slug": "banos",
+  "nombre": "Baños"
+ },
+ {
+  "slug": "barberias",
+  "nombre": "Barberías"
+ },
+ {
+  "slug": "bares",
+  "nombre": "Bares"
+ },
+ {
+  "slug": "barradetragos",
+  "nombre": "Barra de Tragos"
+ },
+ {
+  "slug": "barrios",
+  "nombre": "Barrios"
+ },
+ {
+  "slug": "baterias",
+  "nombre": "Baterías"
+ },
+ {
+  "slug": "bazar",
+  "nombre": "Bazar"
+ },
+ {
+  "slug": "bebidas",
+  "nombre": "Bebidas"
+ },
+ {
+  "slug": "bicicleterias",
+  "nombre": "Bicicleterías"
+ },
+ {
+  "slug": "bijouteri",
+  "nombre": "Bijouteri"
+ },
+ {
+  "slug": "bioquimicos",
+  "nombre": "Bioquímicos"
+ },
+ {
+  "slug": "blanquerias",
+  "nombre": "Blanquerías"
+ },
+ {
+  "slug": "bobinados",
+  "nombre": "Bobinados"
+ },
+ {
+  "slug": "bolsas",
+  "nombre": "Bolsas"
+ },
+ {
+  "slug": "bolsos",
+  "nombre": "Bolsos"
+ },
+ {
+  "slug": "bombas",
+  "nombre": "Bombas"
+ },
+ {
+  "slug": "boxeo",
+  "nombre": "Boxeo"
+ },
+ {
+  "slug": "buloneras",
+  "nombre": "Buloneras"
+ },
+ {
+  "slug": "cabanas",
+  "nombre": "Cabañas"
+ },
+ {
+  "slug": "cafeterias",
+  "nombre": "Cafeterias"
+ },
+ {
+  "slug": "calefones",
+  "nombre": "Calefones"
+ },
+ {
+  "slug": "calzados",
+  "nombre": "Calzados"
+ },
+ {
+  "slug": "camarasdeseguridad",
+  "nombre": "Cámaras de Seguridad"
+ },
+ {
+  "slug": "camioneros",
+  "nombre": "Camioneros"
+ },
+ {
+  "slug": "canchas",
+  "nombre": "Canchas"
+ },
+ {
+  "slug": "canos-petroleros",
+  "nombre": "Caños Petroleros"
+ },
+ {
+  "slug": "cantantes",
+  "nombre": "Cantantes"
+ },
+ {
+  "slug": "cardiologos",
+  "nombre": "Cardiólogos"
+ },
+ {
+  "slug": "carnicerias",
+  "nombre": "Carnicerías"
+ },
+ {
+  "slug": "carpinterias",
+  "nombre": "Carpinterías"
+ },
+ {
+  "slug": "carreras",
+  "nombre": "Carreras"
+ },
+ {
+  "slug": "carteles",
+  "nombre": "Carteles"
+ },
+ {
+  "slug": "casas-de-comidas",
+  "nombre": "Casas de Comidas"
+ },
+ {
+  "slug": "casillas-rurales",
+  "nombre": "Casillas Rurales"
+ },
+ {
+  "slug": "catering",
+  "nombre": "Catering"
+ },
+ {
+  "slug": "celulares",
+  "nombre": "Celulares"
+ },
+ {
+  "slug": "centros",
+  "nombre": "Centros"
+ },
+ {
+  "slug": "cereales",
+  "nombre": "Cereales"
+ },
+ {
+  "slug": "cerrajerias",
+  "nombre": "Cerrajerías"
+ },
+ {
+  "slug": "cervecerias",
+  "nombre": "Cervecerías"
+ },
+ {
+  "slug": "chacinados",
+  "nombre": "Chacinados"
+ },
+ {
+  "slug": "chapistas",
+  "nombre": "Chapistas"
+ },
+ {
+  "slug": "ciclomotores",
+  "nombre": "Ciclomotores"
+ },
+ {
+  "slug": "cirujanos",
+  "nombre": "Cirujanos"
+ },
+ {
+  "slug": "clases",
+  "nombre": "Clases"
+ },
+ {
+  "slug": "clasificados",
+  "nombre": "Clasificados"
+ },
+ {
+  "slug": "clima",
+  "nombre": "Clima"
+ },
+ {
+  "slug": "clubes",
+  "nombre": "Clubes"
+ },
+ {
+  "slug": "cocheras",
+  "nombre": "Cocheras"
+ },
+ {
+  "slug": "cocina",
+  "nombre": "Cocina"
+ },
+ {
+  "slug": "colegios",
+  "nombre": "Colegios"
+ },
+ {
+  "slug": "coloniavacaciones",
+  "nombre": "Colonia Vacaciones"
+ },
+ {
+  "slug": "combis",
+  "nombre": "Combis"
+ },
+ {
+  "slug": "combustibles",
+  "nombre": "Combustibles"
+ },
+ {
+  "slug": "comisionistas",
+  "nombre": "Comisionistas"
+ },
+ {
+  "slug": "community-managers",
+  "nombre": "Community Managers"
+ },
+ {
+  "slug": "compraventa",
+  "nombre": "Compra Venta"
+ },
+ {
+  "slug": "computacion",
+  "nombre": "Computación"
+ },
+ {
+  "slug": "condimentos",
+  "nombre": "Condimentos"
+ },
+ {
+  "slug": "confeccion",
+  "nombre": "Confección"
+ },
+ {
+  "slug": "consignatarios",
+  "nombre": "Consignatarios"
+ },
+ {
+  "slug": "construcciones-en-seco",
+  "nombre": "Construcciones En Seco"
+ },
+ {
+  "slug": "constructores",
+  "nombre": "Constructores"
+ },
+ {
+  "slug": "consultora-laboral",
+  "nombre": "Consultora Laboral"
+ },
+ {
+  "slug": "consultorios-medicos",
+  "nombre": "Consultorios Médicos"
+ },
+ {
+  "slug": "contadores",
+  "nombre": "Contadores"
+ },
+ {
+  "slug": "containers",
+  "nombre": "Containers"
+ },
+ {
+  "slug": "control-de-plagas",
+  "nombre": "Control de Plagas"
+ },
+ {
+  "slug": "corralones",
+  "nombre": "Corralones"
+ },
+ {
+  "slug": "cortinasroller",
+  "nombre": "Cortinas Roller"
+ },
+ {
+  "slug": "cosmiatria",
+  "nombre": "Cosmiatría"
+ },
+ {
+  "slug": "costura",
+  "nombre": "Costura"
+ },
+ {
+  "slug": "cotillon",
+  "nombre": "Cotillón"
+ },
+ {
+  "slug": "cuchilleria",
+  "nombre": "Cuchillería"
+ },
+ {
+  "slug": "cursos",
+  "nombre": "Cursos"
+ },
+ {
+  "slug": "danza",
+  "nombre": "Danza"
+ },
+ {
+  "slug": "decoraciones",
+  "nombre": "Decoraciones"
+ },
+ {
+  "slug": "delivery",
+  "nombre": "Delivery"
+ },
+ {
+  "slug": "departamentos-judiciales",
+  "nombre": "Departamentos Judiciales"
+ },
+ {
+  "slug": "depilacion",
+  "nombre": "Depilación"
+ },
+ {
+  "slug": "deportes",
+  "nombre": "Deportes"
+ },
+ {
+  "slug": "dermatologos",
+  "nombre": "Dermatologos"
+ },
+ {
+  "slug": "descartables",
+  "nombre": "Descartables"
+ },
+ {
+  "slug": "descuentos",
+  "nombre": "Descuentos"
+ },
+ {
+  "slug": "dia-de-la-madre",
+  "nombre": "Día de la Madre"
+ },
+ {
+  "slug": "dia-del-nino",
+  "nombre": "Día del Niño"
+ },
+ {
+  "slug": "diabetologos",
+  "nombre": "Diabetólogos"
+ },
+ {
+  "slug": "diagnostico-por-imagen",
+  "nombre": "Diagnóstico Por Imágen"
+ },
+ {
+  "slug": "dieteticas",
+  "nombre": "Dietéticas"
+ },
+ {
+  "slug": "directv",
+  "nombre": "Directv"
+ },
+ {
+  "slug": "discjockey",
+  "nombre": "Disc Jockey"
+ },
+ {
+  "slug": "diseno-grafico",
+  "nombre": "Diseño Grafico"
+ },
+ {
+  "slug": "diseno-web",
+  "nombre": "Diseño Web"
+ },
+ {
+  "slug": "disfraces",
+  "nombre": "Disfraces"
+ },
+ {
+  "slug": "disqueria",
+  "nombre": "Disquerias"
+ },
+ {
+  "slug": "distribuidoras",
+  "nombre": "Distribuidoras"
+ },
+ {
+  "slug": "drones",
+  "nombre": "Drones"
+ },
+ {
+  "slug": "durlock",
+  "nombre": "Durlock"
+ },
+ {
+  "slug": "elasticos",
+  "nombre": "Elásticos"
+ },
+ {
+  "slug": "electricidad",
+  "nombre": "Electricidad"
+ },
+ {
+  "slug": "electricistas",
+  "nombre": "Electricistas"
+ },
+ {
+  "slug": "electrodomesticos",
+  "nombre": "Electrodomésticos"
+ },
+ {
+  "slug": "electromecanicos",
+  "nombre": "Electromecanicos"
+ },
+ {
+  "slug": "electronica",
+  "nombre": "Electrónica"
+ },
+ {
+  "slug": "embragues",
+  "nombre": "Embragues"
+ },
+ {
+  "slug": "emergencias",
+  "nombre": "Emergencias"
+ },
+ {
+  "slug": "endocrinologos",
+  "nombre": "Endocrinólogos"
+ },
+ {
+  "slug": "energia-solar",
+  "nombre": "Energía Solar"
+ },
+ {
+  "slug": "enfermerias",
+  "nombre": "Enfermerías"
+ },
+ {
+  "slug": "equipamientos",
+  "nombre": "Equipamiento Gastronómico"
+ },
+ {
+  "slug": "escapes",
+  "nombre": "Escapes"
+ },
+ {
+  "slug": "escribanias",
+  "nombre": "Escribanías"
+ },
+ {
+  "slug": "escuelas",
+  "nombre": "Escuelas"
+ },
+ {
+  "slug": "estacionesdeservicios",
+  "nombre": "Estaciones de Servicios"
+ },
+ {
+  "slug": "estampados",
+  "nombre": "Estampados"
+ },
+ {
+  "slug": "estetica",
+  "nombre": "Estética"
+ },
+ {
+  "slug": "esteticasmascotas",
+  "nombre": "Estéticas Mascotas"
+ },
+ {
+  "slug": "estructuras-metalicas",
+  "nombre": "Estructuras Metálicas"
+ },
+ {
+  "slug": "excavaciones",
+  "nombre": "Excavaciones"
+ },
+ {
+  "slug": "expresos",
+  "nombre": "Expresos"
+ },
+ {
+  "slug": "extintores",
+  "nombre": "Extintores"
+ },
+ {
+  "slug": "ferreterias",
+  "nombre": "Ferreterías"
+ },
+ {
+  "slug": "fiambrerias",
+  "nombre": "Fiambrerías"
+ },
+ {
+  "slug": "filiales",
+  "nombre": "Filiales"
+ },
+ {
+  "slug": "filmaciones",
+  "nombre": "Filmaciones"
+ },
+ {
+  "slug": "financieras",
+  "nombre": "Financieras"
+ },
+ {
+  "slug": "fisioterapeutas",
+  "nombre": "Fisioterapeutas"
+ },
+ {
+  "slug": "flebologia",
+  "nombre": "Flebología"
+ },
+ {
+  "slug": "fletes",
+  "nombre": "Fletes"
+ },
+ {
+  "slug": "florerias",
+  "nombre": "Florerías"
+ },
+ {
+  "slug": "fonoaudiologia",
+  "nombre": "Fonoaudiologia"
+ },
+ {
+  "slug": "forrajerias",
+  "nombre": "Forrajerías"
+ },
+ {
+  "slug": "fotocopiadoras",
+  "nombre": "Fotocopiadoras"
+ },
+ {
+  "slug": "fotografos",
+  "nombre": "Fotografos"
+ },
+ {
+  "slug": "frenos",
+  "nombre": "Frenos"
+ },
+ {
+  "slug": "fumigaciones",
+  "nombre": "Fumigaciones"
+ },
+ {
+  "slug": "galpones-tinglados",
+  "nombre": "Galpones Tinglados"
+ },
+ {
+  "slug": "gas-insumos",
+  "nombre": "Gas Insumos"
+ },
+ {
+  "slug": "gases-industriales",
+  "nombre": "Gases Industriales"
+ },
+ {
+  "slug": "gasistas",
+  "nombre": "Gasistas"
+ },
+ {
+  "slug": "gastroenterologos",
+  "nombre": "Gastroenterólogos"
+ },
+ {
+  "slug": "geriatricos",
+  "nombre": "Geriátricos"
+ },
+ {
+  "slug": "gestorias",
+  "nombre": "Gestorías"
+ },
+ {
+  "slug": "gimnasios",
+  "nombre": "Gimnasios"
+ },
+ {
+  "slug": "ginecologia",
+  "nombre": "Ginecología"
+ },
+ {
+  "slug": "gomerias",
+  "nombre": "Gomerías"
+ },
+ {
+  "slug": "graficas",
+  "nombre": "Gráficas"
+ },
+ {
+  "slug": "gruas",
+  "nombre": "Grúas"
+ },
+ {
+  "slug": "grupos-electrogenos",
+  "nombre": "Grupos Electrógenos"
+ },
+ {
+  "slug": "guarderias",
+  "nombre": "Guarderías"
+ },
+ {
+  "slug": "guia-de-pesca",
+  "nombre": "Guia de Pesca"
+ },
+ {
+  "slug": "hacienda",
+  "nombre": "Hacienda"
+ },
+ {
+  "slug": "hamburgueserias",
+  "nombre": "Hamburgueserías"
+ },
+ {
+  "slug": "heladerias",
+  "nombre": "Heladerías"
+ },
+ {
+  "slug": "hematologia",
+  "nombre": "Hematología"
+ },
+ {
+  "slug": "herboristerias",
+  "nombre": "Herboristerías"
+ },
+ {
+  "slug": "herrajes",
+  "nombre": "Herrajes"
+ },
+ {
+  "slug": "herramientas",
+  "nombre": "Herramientas"
+ },
+ {
+  "slug": "herreros",
+  "nombre": "Herreros"
+ },
+ {
+  "slug": "hidraulica",
+  "nombre": "Hidráulica"
+ },
+ {
+  "slug": "higiene-y-seguridad",
+  "nombre": "Higiene y Seguridad"
+ },
+ {
+  "slug": "hockey",
+  "nombre": "Hockey"
+ },
+ {
+  "slug": "hormigonelaborado",
+  "nombre": "Hormigón Elaborado"
+ },
+ {
+  "slug": "hoteles",
+  "nombre": "Hoteles"
+ },
+ {
+  "slug": "iglesias",
+  "nombre": "Iglesias"
+ },
+ {
+  "slug": "imprentas",
+  "nombre": "Imprentas"
+ },
+ {
+  "slug": "impresiones-3d",
+  "nombre": "Impresiones 3D"
+ },
+ {
+  "slug": "indumentarias",
+  "nombre": "Indumentarias"
+ },
+ {
+  "slug": "infectologia",
+  "nombre": "Infectología"
+ },
+ {
+  "slug": "inflables",
+  "nombre": "Inflables"
+ },
+ {
+  "slug": "informatica",
+  "nombre": "Informática"
+ },
+ {
+  "slug": "ingenieros",
+  "nombre": "Ingenieros"
+ },
+ {
+  "slug": "ingles",
+  "nombre": "Ingles"
+ },
+ {
+  "slug": "inmobiliarias",
+  "nombre": "Inmobiliarias"
+ },
+ {
+  "slug": "instalacionescomerciales",
+  "nombre": "Instalaciones Comerciales"
+ },
+ {
+  "slug": "institutos",
+  "nombre": "Institutos"
+ },
+ {
+  "slug": "internet",
+  "nombre": "Internet"
+ },
+ {
+  "slug": "jardineros",
+  "nombre": "Jardineros"
+ },
+ {
+  "slug": "jardines",
+  "nombre": "Jardines"
+ },
+ {
+  "slug": "joyerias",
+  "nombre": "Joyerías"
+ },
+ {
+  "slug": "jugueterias",
+  "nombre": "Jugueterías"
+ },
+ {
+  "slug": "juzgados",
+  "nombre": "Juzgados"
+ },
+ {
+  "slug": "karate",
+  "nombre": "Karate"
+ },
+ {
+  "slug": "karting",
+  "nombre": "Karting"
+ },
+ {
+  "slug": "kinesiologos",
+  "nombre": "Kinesiólogos"
+ },
+ {
+  "slug": "kioscos",
+  "nombre": "Kioscos"
+ },
+ {
+  "slug": "laboratorios",
+  "nombre": "Laboratorios"
+ },
+ {
+  "slug": "lacteos",
+  "nombre": "Lácteos"
+ },
+ {
+  "slug": "lagunas",
+  "nombre": "Lagunas"
+ },
+ {
+  "slug": "lanas",
+  "nombre": "Lanas"
+ },
+ {
+  "slug": "lavaderos",
+  "nombre": "Lavaderos"
+ },
+ {
+  "slug": "lavaderosdeautos",
+  "nombre": "Lavaderos de Autos"
+ },
+ {
+  "slug": "lavaderosderopa",
+  "nombre": "Lavaderos de Ropa"
+ },
+ {
+  "slug": "lavarropas",
+  "nombre": "Lavarropas"
+ },
+ {
+  "slug": "lena",
+  "nombre": "Leña"
+ },
+ {
+  "slug": "librerias",
+  "nombre": "Librerías"
+ },
+ {
+  "slug": "limpieza",
+  "nombre": "Limpieza"
+ },
+ {
+  "slug": "limpieza-de-terrenos",
+  "nombre": "Limpieza de Terrenos"
+ },
+ {
+  "slug": "lonas",
+  "nombre": "Lonas"
+ },
+ {
+  "slug": "lubricentros",
+  "nombre": "Lubricentros"
+ },
+ {
+  "slug": "ludotecas",
+  "nombre": "Ludotecas"
+ },
+ {
+  "slug": "maderas",
+  "nombre": "Maderas"
+ },
+ {
+  "slug": "maestromayordeobra",
+  "nombre": "Maestro Mayor Obra"
+ },
+ {
+  "slug": "mamparas",
+  "nombre": "Mamparas"
+ },
+ {
+  "slug": "mandatarios",
+  "nombre": "Mandatarios"
+ },
+ {
+  "slug": "manicuria",
+  "nombre": "Manicuria"
+ },
+ {
+  "slug": "maquillaje",
+  "nombre": "Maquillajes"
+ },
+ {
+  "slug": "maquinarias",
+  "nombre": "Maquinarias"
+ },
+ {
+  "slug": "marketing-digital",
+  "nombre": "Marketing Digital"
+ },
+ {
+  "slug": "marroquinerias",
+  "nombre": "Marroquinerias"
+ },
+ {
+  "slug": "martilleros",
+  "nombre": "Martilleros"
+ },
+ {
+  "slug": "masajistas",
+  "nombre": "Masajistas"
+ },
+ {
+  "slug": "mascotas",
+  "nombre": "Mascotas"
+ },
+ {
+  "slug": "masoterapeutas",
+  "nombre": "Masoterapeutas"
+ },
+ {
+  "slug": "matafuegos",
+  "nombre": "Matafuegos"
+ },
+ {
+  "slug": "materiales",
+  "nombre": "Materiales"
+ },
+ {
+  "slug": "materiales-electrico",
+  "nombre": "Materiales Eléctrico"
+ },
+ {
+  "slug": "maternidad",
+  "nombre": "Maternidad"
+ },
+ {
+  "slug": "mecanicos",
+  "nombre": "Mecánicos"
+ },
+ {
+  "slug": "medicinaalternativas",
+  "nombre": "Medicina Alternativas"
+ },
+ {
+  "slug": "medicinalaboral",
+  "nombre": "Medicina Laboral"
+ },
+ {
+  "slug": "medicos-clinicos",
+  "nombre": "Médicos clínicos"
+ },
+ {
+  "slug": "mensajeria",
+  "nombre": "Mensajería"
+ },
+ {
+  "slug": "mercerias",
+  "nombre": "Mercerías"
+ },
+ {
+  "slug": "metalurgicas",
+  "nombre": "Metalúrgicas"
+ },
+ {
+  "slug": "miel",
+  "nombre": "Miel"
+ },
+ {
+  "slug": "modistas",
+  "nombre": "Modistas"
+ },
+ {
+  "slug": "molineros",
+  "nombre": "Molineros"
+ },
+ {
+  "slug": "monitoresdesiembra",
+  "nombre": "Monitores de Siembra"
+ },
+ {
+  "slug": "mosaicos",
+  "nombre": "Mosaicos"
+ },
+ {
+  "slug": "motocicletas",
+  "nombre": "Motocicletas"
+ },
+ {
+  "slug": "motores",
+  "nombre": "Motores"
+ },
+ {
+  "slug": "movimientosdesuelos",
+  "nombre": "Movimientos de Suelos"
+ },
+ {
+  "slug": "mueblerias",
+  "nombre": "Mueblerías"
+ },
+ {
+  "slug": "municipalidad-trenque-lauquen",
+  "nombre": "Municipalidad"
+ },
+ {
+  "slug": "museos",
+  "nombre": "Museos"
+ },
+ {
+  "slug": "mutuales",
+  "nombre": "Mutuales"
+ },
+ {
+  "slug": "natacion",
+  "nombre": "Natación"
+ },
+ {
+  "slug": "naturistas",
+  "nombre": "Naturistas"
+ },
+ {
+  "slug": "nautica",
+  "nombre": "Náutica"
+ },
+ {
+  "slug": "nefrologia",
+  "nombre": "Nefrología"
+ },
+ {
+  "slug": "neonatologia",
+  "nombre": "Neonatología"
+ },
+ {
+  "slug": "neumaticos",
+  "nombre": "Neumáticos"
+ },
+ {
+  "slug": "neumonologia",
+  "nombre": "Neumonología"
+ },
+ {
+  "slug": "neurocirujanos",
+  "nombre": "Neurocirujanos"
+ },
+ {
+  "slug": "nitrogeno",
+  "nombre": "Nitrógeno"
+ },
+ {
+  "slug": "nutricionistas",
+  "nombre": "Nutricionistas"
+ },
+ {
+  "slug": "obrasociales",
+  "nombre": "Obra Sociales"
+ },
+ {
+  "slug": "obstetricia",
+  "nombre": "Obstetricia"
+ },
+ {
+  "slug": "odontologos",
+  "nombre": "Odontólogos"
+ },
+ {
+  "slug": "oftalmologos",
+  "nombre": "Oftalmólogos"
+ },
+ {
+  "slug": "oncologia",
+  "nombre": "Oncología"
+ },
+ {
+  "slug": "opticas",
+  "nombre": "Opticas"
+ },
+ {
+  "slug": "organismos-publicos",
+  "nombre": "Organismos Públicos"
+ },
+ {
+  "slug": "organizadoradeeventos",
+  "nombre": "Organización de Evento"
+ },
+ {
+  "slug": "ortopedias",
+  "nombre": "Ortopedias"
+ },
+ {
+  "slug": "osteopatia",
+  "nombre": "Osteopatía"
+ },
+ {
+  "slug": "otorrinolaringologos",
+  "nombre": "Otorrinolaringólogos"
+ },
+ {
+  "slug": "padel",
+  "nombre": "Pádel"
+ },
+ {
+  "slug": "panaderias",
+  "nombre": "Panaderías"
+ },
+ {
+  "slug": "panaleras",
+  "nombre": "Pañaleras"
+ },
+ {
+  "slug": "pancherias",
+  "nombre": "Pancherias"
+ },
+ {
+  "slug": "pantallas-led",
+  "nombre": "Pantallas LED"
+ },
+ {
+  "slug": "papeleras",
+  "nombre": "Papeleras"
+ },
+ {
+  "slug": "parabrisas",
+  "nombre": "Parabrisas"
+ },
+ {
+  "slug": "parrillas",
+  "nombre": "Parrillas"
+ },
+ {
+  "slug": "parteras",
+  "nombre": "Parteras"
+ },
+ {
+  "slug": "pastas",
+  "nombre": "Pastas"
+ },
+ {
+  "slug": "pastelerias",
+  "nombre": "Pastelerías"
+ },
+ {
+  "slug": "patologos",
+  "nombre": "Patólogos"
+ },
+ {
+  "slug": "pediatras",
+  "nombre": "Pediatras"
+ },
+ {
+  "slug": "pedicuria",
+  "nombre": "Pedicuria"
+ },
+ {
+  "slug": "peliculas",
+  "nombre": "Películas"
+ },
+ {
+  "slug": "peloteros",
+  "nombre": "Peloteros"
+ },
+ {
+  "slug": "peluquerias",
+  "nombre": "Peluquerías"
+ },
+ {
+  "slug": "peluqueria-canina",
+  "nombre": "Peluquerías Canina"
+ },
+ {
+  "slug": "perfumerias",
+  "nombre": "Perfumerías"
+ },
+ {
+  "slug": "pesca",
+  "nombre": "Pesca"
+ },
+ {
+  "slug": "pescaderias",
+  "nombre": "Pescaderías"
+ },
+ {
+  "slug": "pilates",
+  "nombre": "Pilates"
+ },
+ {
+  "slug": "piletas",
+  "nombre": "Piletas"
+ },
+ {
+  "slug": "pintores",
+  "nombre": "Pintores"
+ },
+ {
+  "slug": "pintoresdeautos",
+  "nombre": "Pintores de Autos"
+ },
+ {
+  "slug": "pintoresdecuadros",
+  "nombre": "Pintores de Cuadros"
+ },
+ {
+  "slug": "pinturerias",
+  "nombre": "Pinturerías"
+ },
+ {
+  "slug": "pisos",
+  "nombre": "Pisos"
+ },
+ {
+  "slug": "pizzerias",
+  "nombre": "Pizzerías"
+ },
+ {
+  "slug": "plomeros",
+  "nombre": "Plomeros"
+ },
+ {
+  "slug": "poceros",
+  "nombre": "Poceros"
+ },
+ {
+  "slug": "podologia",
+  "nombre": "Podología"
+ },
+ {
+  "slug": "polarizados",
+  "nombre": "Polarizados"
+ },
+ {
+  "slug": "pollos",
+  "nombre": "Pollos"
+ },
+ {
+  "slug": "premoldeados",
+  "nombre": "Premoldeados"
+ },
+ {
+  "slug": "profesores",
+  "nombre": "Profesores"
+ },
+ {
+  "slug": "psicologos",
+  "nombre": "Psicólogos"
+ },
+ {
+  "slug": "psicopedagogos",
+  "nombre": "Psicopedagogos"
+ },
+ {
+  "slug": "psiquiatras",
+  "nombre": "Psiquiatras"
+ },
+ {
+  "slug": "publicidad",
+  "nombre": "Publicidad"
+ },
+ {
+  "slug": "pulverizaciones",
+  "nombre": "Pulverizaciones"
+ },
+ {
+  "slug": "quesos",
+  "nombre": "Quesos"
+ },
+ {
+  "slug": "quinela",
+  "nombre": "Quiniela"
+ },
+ {
+  "slug": "quintas",
+  "nombre": "Quintas"
+ },
+ {
+  "slug": "quiropraxia",
+  "nombre": "Quiropraxia"
+ },
+ {
+  "slug": "radiadores",
+  "nombre": "Radiadores"
+ },
+ {
+  "slug": "radiologos",
+  "nombre": "Radiólogos"
+ },
+ {
+  "slug": "radios",
+  "nombre": "Radios"
+ },
+ {
+  "slug": "rectificaciones",
+  "nombre": "Rectificaciones"
+ },
+ {
+  "slug": "recursos-humanos",
+  "nombre": "Recursos Humanos"
+ },
+ {
+  "slug": "refrigeracion",
+  "nombre": "Refrigeración"
+ },
+ {
+  "slug": "regaleria",
+  "nombre": "Regalería"
+ },
+ {
+  "slug": "reiki",
+  "nombre": "Reiki"
+ },
+ {
+  "slug": "relojerias",
+  "nombre": "Relojerías"
+ },
+ {
+  "slug": "remises",
+  "nombre": "Remises"
+ },
+ {
+  "slug": "reparaciones",
+  "nombre": "Reparaciones"
+ },
+ {
+  "slug": "reposteria",
+  "nombre": "Repostería"
+ },
+ {
+  "slug": "repuestos",
+  "nombre": "Repuestos"
+ },
+ {
+  "slug": "residencias",
+  "nombre": "Residencias"
+ },
+ {
+  "slug": "restaurantes",
+  "nombre": "Restaurantes"
+ },
+ {
+  "slug": "resto-bar",
+  "nombre": "Resto Bar"
+ },
+ {
+  "slug": "reumatologos",
+  "nombre": "Reumatologos"
+ },
+ {
+  "slug": "revestimiento-texturado",
+  "nombre": "Revestimiento Texturado"
+ },
+ {
+  "slug": "rockeria",
+  "nombre": "Rockeria"
+ },
+ {
+  "slug": "rotiserias",
+  "nombre": "Rotiserías"
+ },
+ {
+  "slug": "saca-bollos",
+  "nombre": "Saca Bollos"
+ },
+ {
+  "slug": "salones-de-eventos",
+  "nombre": "Salones de Eventos"
+ },
+ {
+  "slug": "sandwiches",
+  "nombre": "Sandwiches"
+ },
+ {
+  "slug": "sanitarios",
+  "nombre": "Sanitarios"
+ },
+ {
+  "slug": "santerias",
+  "nombre": "Santerías"
+ },
+ {
+  "slug": "seguridad",
+  "nombre": "Seguridad"
+ },
+ {
+  "slug": "seguros",
+  "nombre": "Seguros"
+ },
+ {
+  "slug": "semillas",
+  "nombre": "Semillas"
+ },
+ {
+  "slug": "serigrafia",
+  "nombre": "Serigrafía"
+ },
+ {
+  "slug": "serviciolunch",
+  "nombre": "Servicio de Lunch"
+ },
+ {
+  "slug": "serviciotecnicoheladeras",
+  "nombre": "Servicio Tec Heladeras"
+ },
+ {
+  "slug": "servicio-tecnico",
+  "nombre": "Servicio Técnico"
+ },
+ {
+  "slug": "serviciosdelimpieza",
+  "nombre": "Servicios De Limpieza"
+ },
+ {
+  "slug": "sexologia",
+  "nombre": "Sexología"
+ },
+ {
+  "slug": "sindicatos",
+  "nombre": "Sindicatos"
+ },
+ {
+  "slug": "sonido",
+  "nombre": "Sonido Eventos"
+ },
+ {
+  "slug": "sucursales-de-cobro",
+  "nombre": "Sucursales de Cobro"
+ },
+ {
+  "slug": "supermercados",
+  "nombre": "Supermercados"
+ },
+ {
+  "slug": "tabaquerias",
+  "nombre": "Tabaquerías"
+ },
+ {
+  "slug": "talabarterias",
+  "nombre": "Talabarterías"
+ },
+ {
+  "slug": "talleres",
+  "nombre": "Talleres"
+ },
+ {
+  "slug": "tallermecanicos",
+  "nombre": "Talleres Mecánicos"
+ },
+ {
+  "slug": "tapicerias",
+  "nombre": "Tapicerías"
+ },
+ {
+  "slug": "tarotistas",
+  "nombre": "Tarotistas"
+ },
+ {
+  "slug": "tatuaje",
+  "nombre": "Tatuaje"
+ },
+ {
+  "slug": "techistas",
+  "nombre": "Techistas"
+ },
+ {
+  "slug": "telas",
+  "nombre": "Telas"
+ },
+ {
+  "slug": "telefonos-utiles",
+  "nombre": "Teléfonos Útiles"
+ },
+ {
+  "slug": "terapeutas",
+  "nombre": "Terapeutas"
+ },
+ {
+  "slug": "terapiasalternativas",
+  "nombre": "Terapias Alternativas"
+ },
+ {
+  "slug": "terapista-ocupacional",
+  "nombre": "Terapista Ocupacional"
+ },
+ {
+  "slug": "terrenosnivelacion",
+  "nombre": "Terrenos Nivelación"
+ },
+ {
+  "slug": "tocoginecologia",
+  "nombre": "Tocoginecología"
+ },
+ {
+  "slug": "tornerias",
+  "nombre": "Tornerías"
+ },
+ {
+  "slug": "tortas",
+  "nombre": "Tortas"
+ },
+ {
+  "slug": "tractores",
+  "nombre": "Tractores"
+ },
+ {
+  "slug": "traductorpublico",
+  "nombre": "Traductor Público"
+ },
+ {
+  "slug": "traslados",
+  "nombre": "Traslados"
+ },
+ {
+  "slug": "traumatologos",
+  "nombre": "Traumatólogos"
+ },
+ {
+  "slug": "trofeos",
+  "nombre": "Trofeos"
+ },
+ {
+  "slug": "turismo",
+  "nombre": "Turismo"
+ },
+ {
+  "slug": "universidades",
+  "nombre": "Universidades"
+ },
+ {
+  "slug": "urologos",
+  "nombre": "Urólogos"
+ },
+ {
+  "slug": "vehiculos-electricos",
+  "nombre": "Vehículos Eléctricos"
+ },
+ {
+  "slug": "verdulerias",
+  "nombre": "Verdulerías"
+ },
+ {
+  "slug": "veterinarias",
+  "nombre": "Veterinarias"
+ },
+ {
+  "slug": "viandas",
+  "nombre": "Viandas"
+ },
+ {
+  "slug": "vidrierias",
+  "nombre": "Vidrierías"
+ },
+ {
+  "slug": "vinos",
+  "nombre": "Vinos"
+ },
+ {
+  "slug": "viveros",
+  "nombre": "Viveros"
+ },
+ {
+  "slug": "viviendas",
+  "nombre": "Viviendas"
+ },
+ {
+  "slug": "volquetes",
+  "nombre": "Volquetes"
+ },
+ {
+  "slug": "yesistas",
+  "nombre": "Yesistas"
+ },
+ {
+  "slug": "yoga",
+  "nombre": "Yoga"
+ },
+ {
+  "slug": "zapateros",
+  "nombre": "Zapateros"
+ },
+ {
+  "slug": "zinguerias",
+  "nombre": "Zinguerias"
+ }
+]
