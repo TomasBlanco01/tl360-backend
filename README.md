@@ -17,6 +17,8 @@ Backend real que pide la SRS (sección 5, Restricciones). Reemplaza al puente en
   - `01_rubros.sql` — 435 rubros en 10 súper rubros (nombres tomados de una guía local como referencia).
   - `02_empresas.sql` — 3885 comercios importados (nombre, dirección, teléfonos, descripción, fotos).
     **Uso académico: no está versionado ni debe publicarse.** Se regenera con `tools/`.
+  - `02_empresas_demo.sql` — 54 comercios **ficticios** (los del modo mock del front). Si falta
+    `02_empresas.sql` (por ejemplo, en un clon limpio del repositorio), `npm run db` y `validate.mjs` usan este.
   - `03_simulados.sql` — datos **inventados** para que toda la web tenga contenido: usuarios de prueba,
     dueños, horarios, calificaciones, etiquetas, publicidades y turnos. Ver el encabezado del archivo.
 
@@ -50,14 +52,15 @@ solas al arrancar (`sqlx::migrate!`). Los seeds se aplican una vez con `psql -f 
 DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable" cargo test
 ```
 
-- **47 unitarias** (sin base de datos): reglas de agenda (grilla, cierre, día sin atención, anticipación de
+- **48 unitarias** (sin base de datos): reglas de agenda (grilla, cierre, día sin atención, anticipación de
   cancelación), validaciones, JWT (vencido, otro secreto, `alg=none`), límite de intentos, parseo de horarios,
   franjas superpuestas, composición de los correos, cifrado Web Push (RFC 8188/8291), VAPID, allowlist de endpoints push,
   semana/ventana del resumen semanal RF-14, normalización/límites de etiquetas RF-18 y rango de
   anticipación del recordatorio RF-03.
-- **64 de integración** (`tests/api.rs`): cada test crea una base PostgreSQL propia con las migraciones aplicadas
+- **71 de integración** (`tests/api.rs`): cada test crea una base PostgreSQL propia con las migraciones aplicadas
   (`#[sqlx::test]`) y llama a la API real: registro y login, verificación de email (RF-01, vencimiento 1 h y
-  reenvío que invalida el anterior), bloqueo de turnos sin verificar, verificación comercial con CUIT (RF-15),
+  reenvío que invalida el anterior), Mis datos (perfil y contraseña), bloqueo de turnos sin verificar,
+  verificación comercial con CUIT y rechazo con motivo (RF-15), turnos agendados por el comercio (RF-04),
   bloqueo por intentos, recuperación de contraseña, permisos por rol, comercios, horarios, reservas (incluidas 8
   solicitudes simultáneas por el mismo horario), cancelación (cliente y dueño, RF-05), calificaciones por turno (RF-13), atenciones de
   mostrador con métricas (RF-04), favoritos, publicidades (incluidas colectas sin comercio y el canal público de
@@ -94,6 +97,13 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
 - **Reservas (RF-03/04):** el día debe tener horario cargado, la hora debe caer dentro de una franja, entrar completa
   antes del cierre y estar en la grilla (inicio de franja + múltiplos de `duracion_turno_min`, 30 min si no está
   definida). El front usa la misma grilla. Dos pedidos simultáneos por el mismo horario: uno confirma y el otro 409.
+- **Turnos agendados por el comercio (RF-04):** `POST /empresas/:id/turnos` (dueño o superadmin) agenda un turno
+  para alguien sin cuenta con `cliente_nombre` y `cliente_email` opcional; usa la misma grilla y el mismo índice
+  único que la reserva online. `GET /empresas/:id/turnos` devuelve el correo de contacto y `sin_cuenta`.
+- **Mis datos:** `PUT /usuarios/yo` cambia nombre y correo (un correo nuevo vuelve a exigir verificación y se
+  envía el enlace) o la contraseña (`password_actual` + `password_nueva`). Lo usan clientes y dueños.
+- **Favoritos (RF-10):** solo las cuentas de cliente marcan favoritos (`PUT /favoritos/:id` responde 403 al dueño
+  o al superadmin).
 - **Cancelación (RF-05):** el cliente cancela con la anticipación del comercio
   (`anticipacion_cancelacion_min`, 2 h por defecto). El dueño del comercio también puede cancelar
   internamente sin ese mínimo (solo turnos futuros); en ambos casos el turno queda `cancelado` (no
@@ -108,7 +118,8 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
   público (sin sesión) para pedir difusión; la bandeja `GET/PUT /solicitudes-publicidad` es solo del superadmin y
   evita duplicados pendientes del mismo contacto.
 - **Verificación comercial (RF-15):** el dueño solicita con CUIT (11 dígitos) y constancia (URL) → queda `pendiente`;
-  solo el superadmin aprueba (sello on) o rechaza (sello off). El toggle clásico `PUT /empresas/:id/verificado`
+  solo el superadmin aprueba (sello on) o rechaza (sello off) con un `motivo` obligatorio (5 a 500 caracteres) que se
+  guarda en `motivo_rechazo` y le llega al dueño por correo. El toggle clásico `PUT /empresas/:id/verificado`
   sincroniza `verificado_estado`. Una nueva solicitud sobre un comercio ya verificado lo vuelve a `pendiente` y apaga
   el sello hasta que se apruebe (la base exige `verificado = (verificado_estado = 'verificado')`). La bandeja se
   consulta con `GET /empresas?verificado_estado=pendiente`.
