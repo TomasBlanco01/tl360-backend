@@ -11,7 +11,9 @@ const run = async (f) => { await db.exec(fs.readFileSync(path.join(raiz, f), "ut
 
 const migraciones = fs.readdirSync(path.join(raiz, "migrations")).filter((f) => f.endsWith(".sql")).sort();
 for (const m of migraciones) await run(`migrations/${m}`);
-for (const s of ["01_rubros", "02_empresas", "03_simulados"]) await run(`db/seed/${s}.sql`);
+// 02_empresas.sql (comercios importados) no se versiona; en un clon limpio se usan los de demostración.
+const comercios = fs.existsSync(path.join(raiz, "db/seed/02_empresas.sql")) ? "02_empresas" : "02_empresas_demo";
+for (const s of ["01_rubros", comercios, "03_simulados"]) await run(`db/seed/${s}.sql`);
 
 const q = async (s) => (await db.query(s)).rows;
 for (const t of ["usuarios", "categorias", "empresas", "empresa_categorias", "telefonos_empresa", "horarios_empresa", "calificaciones", "etiquetas", "empresa_etiquetas", "publicaciones_destacadas", "solicitudes_publicidad", "atenciones_mostrador", "turnos"])

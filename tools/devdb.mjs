@@ -26,7 +26,11 @@ setInterval(async () => {
     const hay = (await cliente.query("select count(*)::int n from categorias")).rows[0].n;
     cargado = true;
     if (hay > 0) return console.log("seeds ya cargados");
-    for (const f of ["01_rubros", "02_empresas", "03_simulados"]) {
+    // 02_empresas.sql (comercios importados) no se versiona; en un clon limpio se usan los de demostración.
+    const comercios = fs.existsSync(fileURLToPath(new URL("../db/seed/02_empresas.sql", import.meta.url)))
+      ? "02_empresas"
+      : "02_empresas_demo";
+    for (const f of ["01_rubros", comercios, "03_simulados"]) {
       await cliente.query(fs.readFileSync(fileURLToPath(new URL(`../db/seed/${f}.sql`, import.meta.url)), "utf8"));
       console.log("seed cargado:", f);
     }
