@@ -50,12 +50,12 @@ solas al arrancar (`sqlx::migrate!`). Los seeds se aplican una vez con `psql -f 
 DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable" cargo test
 ```
 
-- **46 unitarias** (sin base de datos): reglas de agenda (grilla, cierre, día sin atención, anticipación de
+- **47 unitarias** (sin base de datos): reglas de agenda (grilla, cierre, día sin atención, anticipación de
   cancelación), validaciones, JWT (vencido, otro secreto, `alg=none`), límite de intentos, parseo de horarios,
-  composición de los correos, cifrado Web Push (RFC 8188/8291), VAPID, allowlist de endpoints push,
+  franjas superpuestas, composición de los correos, cifrado Web Push (RFC 8188/8291), VAPID, allowlist de endpoints push,
   semana/ventana del resumen semanal RF-14, normalización/límites de etiquetas RF-18 y rango de
   anticipación del recordatorio RF-03.
-- **60 de integración** (`tests/api.rs`): cada test crea una base PostgreSQL propia con las migraciones aplicadas
+- **64 de integración** (`tests/api.rs`): cada test crea una base PostgreSQL propia con las migraciones aplicadas
   (`#[sqlx::test]`) y llama a la API real: registro y login, verificación de email (RF-01, vencimiento 1 h y
   reenvío que invalida el anterior), bloqueo de turnos sin verificar, verificación comercial con CUIT (RF-15),
   bloqueo por intentos, recuperación de contraseña, permisos por rol, comercios, horarios, reservas (incluidas 8
@@ -89,6 +89,8 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
 
 ## Reglas de negocio
 
+- **Horarios (RF-04):** `PUT /empresas/:id/horarios` rechaza con 400 dos franjas del mismo día que se superponen
+  (contiguas, como 09:00-13:00 y 13:00-17:00, sí se aceptan).
 - **Reservas (RF-03/04):** el día debe tener horario cargado, la hora debe caer dentro de una franja, entrar completa
   antes del cierre y estar en la grilla (inicio de franja + múltiplos de `duracion_turno_min`, 30 min si no está
   definida). El front usa la misma grilla. Dos pedidos simultáneos por el mismo horario: uno confirma y el otro 409.
@@ -107,7 +109,9 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
   evita duplicados pendientes del mismo contacto.
 - **Verificación comercial (RF-15):** el dueño solicita con CUIT (11 dígitos) y constancia (URL) → queda `pendiente`;
   solo el superadmin aprueba (sello on) o rechaza (sello off). El toggle clásico `PUT /empresas/:id/verificado`
-  sincroniza `verificado_estado`. La bandeja se consulta con `GET /empresas?verificado_estado=pendiente`.
+  sincroniza `verificado_estado`. Una nueva solicitud sobre un comercio ya verificado lo vuelve a `pendiente` y apaga
+  el sello hasta que se apruebe (la base exige `verificado = (verificado_estado = 'verificado')`). La bandeja se
+  consulta con `GET /empresas?verificado_estado=pendiente`.
 - **Correo (RF-01/03/05/15):** verificación y recuperación vencen en **1 h**; reenviar o pedir de nuevo invalida el
   enlace anterior. Reservar envía confirmación y cancelar avisa al cliente; si cancela el dueño, el
   correo lo identifica como tal. Aprobar/rechazar una verificación avisa al dueño. Un
