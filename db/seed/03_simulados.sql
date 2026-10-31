@@ -183,13 +183,14 @@ FROM _turneras t WHERE t.rn IN (1, 2, 3)
 ON CONFLICT DO NOTHING;
 
 -- Algunos horarios ya ocupados por otros clientes, para ver el turnero con disponibilidad parcial.
+-- El cliente se elige con un JOIN determinístico: un random() dentro de una subconsulta escalar se
+-- reevalúa fila por fila y puede no encontrar a nadie (usuario_id NULL) y abortar todo el seed.
 INSERT INTO turnos (empresa_id, usuario_id, fecha, hora)
-SELECT t.id,
-       (SELECT id FROM usuarios WHERE email = 'cliente' || lpad((1 + floor(random() * 40))::int::text, 2, '0') || '@demo.tl360.test'),
-       current_date + d, h::time
+SELECT t.id, u.id, current_date + d, h::time
 FROM _turneras t
 CROSS JOIN generate_series(1, 5) AS d
 CROSS JOIN (VALUES ('10:00'), ('11:00'), ('17:00')) AS hs(h)
+JOIN usuarios u ON u.email = 'cliente' || lpad((1 + (t.rn * 7 + d * 3) % 40)::text, 2, '0') || '@demo.tl360.test'
 WHERE t.rn <= 30 AND random() < 0.35
 ON CONFLICT DO NOTHING;
 
