@@ -97,13 +97,20 @@ pub async fn crear(
         ));
     }
 
+    // solicitudes_pendiente_uq cubre la carrera entre dos envíos simultáneos que pasaron la consulta.
     sqlx::query("INSERT INTO solicitudes_publicidad (nombre, contacto, tipo, mensaje) VALUES ($1, $2, $3, $4)")
         .bind(nombre)
         .bind(contacto)
         .bind(tipo)
         .bind(mensaje)
         .execute(&state.db)
-        .await?;
+        .await
+        .map_err(|e| match &e {
+            sqlx::Error::Database(d) if d.code().as_deref() == Some("23505") => AppError::Conflict(
+                "Ya recibimos una solicitud con este contacto y está pendiente".into(),
+            ),
+            _ => AppError::Db(e),
+        })?;
     let cuerpo = format!("{nombre} envió una solicitud de {tipo}");
     state
         .push
@@ -168,7 +175,14 @@ pub async fn actualizar(
         .bind(id)
         .bind(&body.estado)
         .execute(&state.db)
-        .await?
+        .await
+        .map_err(|e| match &e {
+            // Reabrir una solicitud cuando ya hay otra pendiente del mismo contacto.
+            sqlx::Error::Database(d) if d.code().as_deref() == Some("23505") => AppError::Conflict(
+                "Ya hay otra solicitud pendiente con este contacto".into(),
+            ),
+            _ => AppError::Db(e),
+        })?
         .rows_affected();
     if filas == 0 {
         return Err(AppError::NotFound("Solicitud no encontrada".into()));

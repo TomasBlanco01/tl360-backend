@@ -3077,6 +3077,57 @@ async fn el_esquema_impide_datos_incoherentes(pool: PgPool) {
     .await
     .unwrap();
     assert_eq!(n, 1);
+
+    // 0013: al cambiar el rubro principal, el anterior deja de figurar entre los del comercio.
+    let otra = crear_categoria(&pool, "Barberías").await;
+    sqlx::query("UPDATE empresas SET categoria_id = $1 WHERE id = $2")
+        .bind(otra)
+        .bind(e.empresa)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let rubros: Vec<i32> = sqlx::query_scalar(
+        "SELECT categoria_id FROM empresa_categorias WHERE empresa_id = $1 ORDER BY categoria_id",
+    )
+    .bind(e.empresa)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(rubros, vec![otra], "el rubro viejo no queda colgado");
+
+    // 0013: reglas de RF-13, RF-15 y RF-16 que antes solo cuidaba la API.
+    assert!(falla("UPDATE empresas SET verificado = true, verificado_estado = 'pendiente'").await, "sello y estado contradictorios");
+    assert!(falla("UPDATE empresas SET cuit = '20-12345678-6'").await, "CUIT sin normalizar");
+    sqlx::query("INSERT INTO reportes (empresa_id, usuario_id, motivo) VALUES ($1, $2, 'cerrado')")
+        .bind(e.empresa)
+        .bind(e.cliente.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(falla("INSERT INTO reportes (empresa_id, usuario_id, motivo) SELECT empresa_id, usuario_id, 'otra vez' FROM reportes").await, "dos reportes pendientes iguales");
+    let turno: i32 = sqlx::query_scalar(
+        "INSERT INTO turnos (empresa_id, usuario_id, fecha, hora) VALUES ($1, $2, '2030-01-08', '10:00') RETURNING id",
+    )
+    .bind(e.empresa)
+    .bind(e.cliente.id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    let empresa = e.empresa;
+    let calificar = |usuario: i32| {
+        let pool = pool.clone();
+        async move {
+            sqlx::query("INSERT INTO calificaciones (usuario_id, empresa_id, turno_id, puntaje) VALUES ($1, $2, $3, 5)")
+                .bind(usuario)
+                .bind(empresa)
+                .bind(turno)
+                .execute(&pool)
+                .await
+                .is_ok()
+        }
+    };
+    assert!(!calificar(e.dueno.id).await, "la calificación debe ser del cliente del turno");
+    assert!(calificar(e.cliente.id).await);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -3285,6 +3336,36 @@ async fn el_sello_se_otorga_por_verificacion_y_solo_el_superadmin_lo_retira(pool
     .await;
     assert_eq!(ficha["verificado"], json!(false));
     assert_eq!(ficha["verificado_estado"], json!("sin_solicitar"));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn una_nueva_solicitud_apaga_el_sello_hasta_que_se_apruebe(pool: PgPool) {
+    let e = escenario(pool).await;
+    let uri = format!("/api/empresas/{}/verificacion", e.empresa);
+    let solicitud = json!({
+        "accion": "solicitar", "cuit": "20-12345678-6",
+        "constancia_cuit_url": "https://ejemplo.com/constancia.pdf"
+    });
+    for (token, cuerpo) in [
+        (e.dueno.token.as_str(), solicitud.clone()),
+        (e.superadmin.token.as_str(), json!({ "accion": "aprobar" })),
+    ] {
+        assert_eq!(
+            call(&e.app, "PUT", &uri, Some(token), Some(cuerpo)).await.0,
+            StatusCode::OK
+        );
+    }
+    // Antes quedaba verificado = true con estado 'pendiente'; ahora la base no lo admite.
+    let (st, v) = call(&e.app, "PUT", &uri, Some(&e.dueno.token), Some(solicitud)).await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(v["verificado"], json!(false), "el sello no convive con una solicitud pendiente");
+    assert_eq!(v["verificado_estado"], json!("pendiente"));
+    let cuit: Option<String> = sqlx::query_scalar("SELECT cuit FROM empresas WHERE id = $1")
+        .bind(e.empresa)
+        .fetch_one(&e.pool)
+        .await
+        .unwrap();
+    assert_eq!(cuit.as_deref(), Some("20123456786"), "el CUIT se guarda normalizado");
 }
 
 #[sqlx::test(migrations = "./migrations")]

@@ -108,9 +108,11 @@ pub async fn set_verificacion(
                         "La constancia de CUIT o habilitación es obligatoria".into(),
                     )
                 })?;
+            // Una nueva solicitud vuelve a revisión: el sello se apaga hasta que se apruebe
+            // (la base exige verificado = (verificado_estado = 'verificado')).
             let resultado = sqlx::query_as::<_, (bool, String)>(
                 "UPDATE empresas SET cuit = $2, constancia_cuit_url = $3, \
-                 verificado_estado = 'pendiente' \
+                 verificado_estado = 'pendiente', verificado = false \
                  WHERE id = $1 RETURNING verificado, verificado_estado",
             )
             .bind(id)
@@ -262,12 +264,19 @@ pub async fn crear_reporte(
             "Ya reportaste este comercio y el reporte está en revisión".into(),
         ));
     }
+    // reportes_pendiente_uq cubre la carrera entre dos envíos simultáneos que pasaron la consulta.
     sqlx::query("INSERT INTO reportes (empresa_id, usuario_id, motivo) VALUES ($1, $2, $3)")
         .bind(id)
         .bind(user.id)
         .bind(motivo)
         .execute(&state.db)
-        .await?;
+        .await
+        .map_err(|e| match &e {
+            sqlx::Error::Database(d) if d.code().as_deref() == Some("23505") => AppError::Conflict(
+                "Ya reportaste este comercio y el reporte está en revisión".into(),
+            ),
+            _ => AppError::Db(e),
+        })?;
     avisar_superadmins(
         &state,
         "Nuevo reporte de comercio",
