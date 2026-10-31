@@ -1664,6 +1664,7 @@ async fn los_horarios_se_editan_validan_y_se_leen(pool: PgPool) {
         json!({ "Lunes": ["20:00-10:00"] }),
         json!({ "Lunez": ["09:00-10:00"] }),
         json!({ "Lunes": ["9 a 10"] }),
+        json!({ "Lunes": ["09:00-13:00", "12:00-16:00"] }),
     ] {
         assert_eq!(
             call(

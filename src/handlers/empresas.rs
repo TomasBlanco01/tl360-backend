@@ -540,6 +540,26 @@ fn parse_rango(rango: &str) -> AppResult<(NaiveTime, NaiveTime)> {
     Ok((ini, fin))
 }
 
+/// Dos franjas del mismo día no pueden pisarse: la grilla de turnos quedaría ambigua. Que una
+/// termine justo cuando empieza la otra (turno partido sin corte) sí se permite.
+fn validar_sin_superposicion(filas: &[(&str, NaiveTime, NaiveTime)]) -> AppResult<()> {
+    let mut ordenadas = filas.to_vec();
+    ordenadas.sort();
+    for par in ordenadas.windows(2) {
+        let ((dia_a, ini_a, fin_a), (dia_b, ini_b, fin_b)) = (par[0], par[1]);
+        if dia_a == dia_b && ini_b < fin_a {
+            return Err(AppError::BadRequest(format!(
+                "Las franjas {}-{} y {}-{} del {dia_a} se superponen",
+                ini_a.format("%H:%M"),
+                fin_a.format("%H:%M"),
+                ini_b.format("%H:%M"),
+                fin_b.format("%H:%M")
+            )));
+        }
+    }
+    Ok(())
+}
+
 pub async fn update_horarios_empresa(
     user: CurrentUser,
     State(state): State<AppState>,
@@ -558,6 +578,7 @@ pub async fn update_horarios_empresa(
             filas.push((dia, ini, fin));
         }
     }
+    validar_sin_superposicion(&filas)?;
     verificar_dueno(&state, &user, id).await?;
 
     let mut tx = state.db.begin().await?;
@@ -1164,6 +1185,21 @@ mod tests {
         ] {
             assert!(parse_rango(malo).is_err(), "{malo}");
         }
+    }
+
+    #[test]
+    fn rechaza_franjas_superpuestas_del_mismo_dia() {
+        let t = |s: &str| NaiveTime::parse_from_str(s, "%H:%M").unwrap();
+        let partido = [("Lunes", t("16:00"), t("20:00")), ("Lunes", t("09:00"), t("13:00"))];
+        assert!(validar_sin_superposicion(&partido).is_ok());
+        let pegadas = [("Lunes", t("09:00"), t("13:00")), ("Lunes", t("13:00"), t("17:00"))];
+        assert!(validar_sin_superposicion(&pegadas).is_ok(), "contiguas no se pisan");
+        let otro_dia = [("Lunes", t("09:00"), t("13:00")), ("Martes", t("10:00"), t("12:00"))];
+        assert!(validar_sin_superposicion(&otro_dia).is_ok());
+        let pisadas = [("Lunes", t("09:00"), t("13:00")), ("Lunes", t("11:00"), t("15:00"))];
+        assert!(validar_sin_superposicion(&pisadas).is_err());
+        let repetidas = [("Sábado", t("09:00"), t("13:00")), ("Sábado", t("09:00"), t("13:00"))];
+        assert!(validar_sin_superposicion(&repetidas).is_err());
     }
 
     #[test]
