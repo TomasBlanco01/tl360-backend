@@ -39,8 +39,8 @@ FROM (
          (CASE e.nivel_origen WHEN 'premium' THEN 2 WHEN 'pago' THEN 1 ELSE 0 END) AS prioridad,
          random() AS azar
   FROM empresas e JOIN categorias c ON c.id = e.categoria_id
-  WHERE e.origen = 'todotrenque'
-    AND c.nombre ~* '(peluquer|barber|gimnasio|odont|kinesi|psic[oó]log|nutricion|dermat|cardi[oó]log|pediatr|ginecol|oftalm|fisioter|masaj|manicur|est[eé]tica|depilaci|yoga|pilates|veterinar|tatuaj|podolog|fonoaud|osteop|contadores|abogados|escriban|talleres mec|lavaderos de autos|canchas|p[aá]del|m[eé]dicos cl|consultorios)'
+  -- Vale para los comercios importados (02_empresas.sql) y para los de demostración (02_empresas_demo.sql).
+  WHERE c.nombre ~* '(peluquer|barber|gimnasio|odont|kinesi|psic[oó]log|nutricion|dermat|cardi[oó]log|pediatr|ginecol|oftalm|fisioter|masaj|manicur|est[eé]tica|depilaci|yoga|pilates|veterinar|tatuaj|podolog|fonoaud|osteop|contadores|abogados|escriban|talleres mec|lavaderos de autos|canchas|p[aá]del|m[eé]dicos cl|consultorios)'
 ) s;
 
 INSERT INTO usuarios (nombre, email, "contraseña", rol, email_verificado)
@@ -140,7 +140,8 @@ UPDATE empresas SET verificado = false, verificado_estado = 'pendiente', cuit = 
        constancia_cuit_url = 'https://example.com/constancia-gimnasio.pdf'
 WHERE id = (SELECT id FROM _turneras WHERE rn = 3);
 
-UPDATE empresas SET verificado = false, verificado_estado = 'rechazado', cuit = '20987654334'
+UPDATE empresas SET verificado = false, verificado_estado = 'rechazado', cuit = '20987654334',
+       motivo_rechazo = 'La constancia no corresponde al CUIT declarado'
 WHERE id = (SELECT id FROM _turneras WHERE rn = 4);
 
 -- ------------------------------------------------------------------ publicidades (RF-06)
@@ -150,13 +151,14 @@ SELECT e.id, e.nombre,
               'Turnos disponibles esta semana','Novedades de temporada','Atención sin cargo de consulta'])[1 + floor(random() * 6)::int],
        e.imagen_portada
 FROM empresas e
-WHERE e.nivel_origen IN ('premium', 'pago') AND e.imagen_portada IS NOT NULL
+WHERE (e.nivel_origen IN ('premium', 'pago') OR e.origen = 'propio') AND e.imagen_portada IS NOT NULL
 ORDER BY random() LIMIT 12;
 
 -- Colecta solidaria de la plataforma (sin comercio), para ver el carrusel y la difusión sin ficha.
 INSERT INTO publicaciones_destacadas (empresa_id, titulo, descripcion, imagen_url)
 VALUES (NULL, 'Colecta para el hospital',
-        'Juntamos insumos para la sala pediátrica: sumate hasta el viernes', NULL);
+        'Juntamos insumos para la sala pediátrica: sumate hasta el viernes',
+        'https://picsum.photos/seed/colecta-hospital/480/320');
 
 -- Pedidos de ejemplo para la bandeja "Solicitudes" del admin (RF-06).
 INSERT INTO solicitudes_publicidad (nombre, contacto, tipo, mensaje) VALUES
@@ -180,6 +182,12 @@ WHERE e.admin_id = (SELECT id FROM usuarios WHERE email = 'negocio@demo.com');
 INSERT INTO turnos (empresa_id, usuario_id, fecha, hora)
 SELECT t.id, (SELECT id FROM usuarios WHERE email = 'cliente@demo.com'), current_date + (t.rn * 2)::int, '10:00'
 FROM _turneras t WHERE t.rn IN (1, 2, 3)
+ON CONFLICT DO NOTHING;
+
+-- Turno que el comercio demo cargó a mano para alguien sin cuenta (por teléfono).
+INSERT INTO turnos (empresa_id, fecha, hora, cliente_nombre, cliente_email)
+SELECT t.id, current_date + 3, '12:00', 'Carlos Medina', 'carlos.medina@ejemplo.com'
+FROM _turneras t WHERE t.rn = 1
 ON CONFLICT DO NOTHING;
 
 -- Algunos horarios ya ocupados por otros clientes, para ver el turnero con disponibilidad parcial.

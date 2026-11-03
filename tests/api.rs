@@ -4509,3 +4509,28 @@ async fn health_verifica_la_base_y_degradacion(pool: PgPool) {
     assert_eq!(body["status"], "degraded");
     assert_eq!(body["db"], "error");
 }
+
+// ------------------------------------------------------------------ esquema 0014
+
+#[sqlx::test(migrations = "./migrations")]
+async fn el_esquema_exige_motivo_al_rechazar_y_un_titular_por_turno(pool: PgPool) {
+    let e = escenario(pool.clone()).await;
+    let falla = |sql: &'static str| {
+        let pool = pool.clone();
+        async move { sqlx::query(sql).execute(&pool).await.is_err() }
+    };
+    assert!(falla("UPDATE empresas SET verificado_estado = 'rechazado'").await, "rechazado sin motivo");
+    assert!(falla("UPDATE empresas SET motivo_rechazo = 'No corresponde' WHERE verificado_estado <> 'rechazado'").await, "motivo sin rechazo");
+    assert!(falla("UPDATE empresas SET verificado_estado = 'rechazado', motivo_rechazo = 'no'").await, "motivo demasiado corto");
+    assert!(!falla("UPDATE empresas SET verificado_estado = 'rechazado', motivo_rechazo = 'Constancia vencida'").await);
+
+    let empresa = e.empresa;
+    let insertar = |sql: &'static str| {
+        let pool = pool.clone();
+        async move { sqlx::query(sql).bind(empresa).execute(&pool).await.is_ok() }
+    };
+    assert!(!insertar("INSERT INTO turnos (empresa_id, fecha, hora) VALUES ($1, '2031-01-07', '09:00')").await, "sin titular");
+    assert!(!insertar("INSERT INTO turnos (empresa_id, fecha, hora, cliente_nombre, cliente_email) VALUES ($1, '2031-01-07', '09:00', 'Ana', 'sin-arroba')").await, "correo inválido");
+    assert!(!insertar("INSERT INTO turnos (empresa_id, usuario_id, fecha, hora, cliente_nombre) SELECT $1, id, '2031-01-07', '09:00', 'Ana' FROM usuarios LIMIT 1").await, "cuenta y nombre a la vez");
+    assert!(insertar("INSERT INTO turnos (empresa_id, fecha, hora, cliente_nombre) VALUES ($1, '2031-01-07', '09:00', 'Ana')").await);
+}
