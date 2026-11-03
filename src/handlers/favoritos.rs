@@ -23,6 +23,12 @@ pub async fn agregar(
     State(state): State<AppState>,
     Path(empresa_id): Path<i32>,
 ) -> AppResult<Json<Value>> {
+    // RF-10: los favoritos son del cliente; un dueño o un superadmin no los usa.
+    if user.rol != "cliente" {
+        return Err(AppError::Forbidden(
+            "Los favoritos son para cuentas de cliente".into(),
+        ));
+    }
     sqlx::query(
         "INSERT INTO favoritos (usuario_id, empresa_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
     )

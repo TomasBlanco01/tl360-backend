@@ -2589,6 +2589,13 @@ async fn los_favoritos_son_por_usuario_e_idempotentes(pool: PgPool) {
             .1,
         json!([])
     );
+    // El dueño de un comercio (y el superadmin) no marcan favoritos.
+    for token in [&e.dueno.token, &e.superadmin.token] {
+        assert_eq!(
+            call(&e.app, "PUT", &uri, Some(token), None).await.0,
+            StatusCode::FORBIDDEN
+        );
+    }
     assert_eq!(
         call(
             &e.app,
