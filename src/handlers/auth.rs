@@ -131,7 +131,7 @@ fn generar_token() -> (String, String) {
 
 /// Emite un enlace de verificación nuevo e invalida los anteriores sin usar: pedir un reenvío
 /// deja un solo enlace válido, con vencimiento de 1 hora.
-async fn emitir_token_verificacion(state: &AppState, usuario_id: i32) -> AppResult<String> {
+pub(crate) async fn emitir_token_verificacion(state: &AppState, usuario_id: i32) -> AppResult<String> {
     let (token, token_hash) = generar_token();
     let mut tx = state.db.begin().await?;
     sqlx::query(
@@ -153,7 +153,7 @@ async fn emitir_token_verificacion(state: &AppState, usuario_id: i32) -> AppResu
     Ok(token)
 }
 
-async fn enviar_correo_verificacion(state: &AppState, nombre: &str, email: &str, token: &str) {
+pub(crate) async fn enviar_correo_verificacion(state: &AppState, nombre: &str, email: &str, token: &str) {
     let enlace = format!(
         "{}/auth/verificar?token={token}",
         state.frontend_url.trim_end_matches('/')

@@ -28,6 +28,7 @@ pub fn build(state: AppState) -> Router {
                     "/",
                     get(usuarios::get_usuarios).post(usuarios::crear_usuario),
                 )
+                .route("/yo", put(usuarios::actualizar_perfil))
                 .route(
                     "/yo/recordatorio",
                     get(usuarios::get_recordatorio).put(usuarios::set_recordatorio),

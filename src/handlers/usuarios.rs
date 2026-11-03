@@ -67,6 +67,107 @@ pub async fn set_recordatorio(
     Ok(Json(json!({ "horas": body.horas })))
 }
 
+#[derive(Deserialize)]
+pub struct PerfilRequest {
+    nombre: Option<String>,
+    email: Option<String>,
+    password_actual: Option<String>,
+    password_nueva: Option<String>,
+}
+
+#[derive(FromRow, Serialize)]
+pub struct Perfil {
+    id: i32,
+    nombre: String,
+    email: String,
+    rol: String,
+    email_verificado: bool,
+}
+
+/// Mis datos (clientes y dueños): cambia nombre y correo, o la contraseña con la actual.
+/// Un correo nuevo vuelve a exigir verificación (RF-01) y se le manda el enlace.
+pub async fn actualizar_perfil(
+    user: CurrentUser,
+    State(state): State<AppState>,
+    AppJson(body): AppJson<PerfilRequest>,
+) -> AppResult<Json<Perfil>> {
+    let cambia_clave = body.password_actual.is_some() || body.password_nueva.is_some();
+    let cambia_datos = body.nombre.is_some() || body.email.is_some();
+    if !cambia_clave && !cambia_datos {
+        return Err(AppError::BadRequest("No hay datos para actualizar".into()));
+    }
+    let (email_actual, hash_actual) = sqlx::query_as::<_, (String, String)>(
+        r#"SELECT email, "contraseña" FROM usuarios WHERE id = $1"#,
+    )
+    .bind(user.id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Usuario no encontrado".into()))?;
+
+    let mut tx = state.db.begin().await?;
+    if cambia_clave {
+        let (Some(actual), Some(nueva)) = (&body.password_actual, &body.password_nueva) else {
+            return Err(AppError::BadRequest(
+                "Para cambiar la contraseña indicá la actual y la nueva".into(),
+            ));
+        };
+        if !bcrypt::verify(actual, &hash_actual)? {
+            return Err(AppError::BadRequest(
+                "La contraseña actual no es correcta".into(),
+            ));
+        }
+        password_valida(nueva)?;
+        let hash = bcrypt::hash(nueva, bcrypt::DEFAULT_COST)?;
+        sqlx::query(r#"UPDATE usuarios SET "contraseña" = $1 WHERE id = $2"#)
+            .bind(hash)
+            .bind(user.id)
+            .execute(&mut *tx)
+            .await?;
+    }
+
+    let mut correo_nuevo = None;
+    if let Some(nombre) = &body.nombre {
+        nombre_valido(nombre)?;
+        sqlx::query("UPDATE usuarios SET nombre = $1 WHERE id = $2")
+            .bind(nombre.trim())
+            .bind(user.id)
+            .execute(&mut *tx)
+            .await?;
+    }
+    if let Some(email) = &body.email {
+        email_valido(email)?;
+        let email = email.trim();
+        if !email.eq_ignore_ascii_case(&email_actual) {
+            sqlx::query("UPDATE usuarios SET email = $1, email_verificado = false WHERE id = $2")
+                .bind(email)
+                .bind(user.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| match &e {
+                    sqlx::Error::Database(d) if d.code().as_deref() == Some("23505") => {
+                        AppError::Conflict("Ya existe una cuenta con ese correo".into())
+                    }
+                    _ => AppError::Db(e),
+                })?;
+            correo_nuevo = Some(email.to_string());
+        }
+    }
+    tx.commit().await?;
+
+    let perfil = sqlx::query_as::<_, Perfil>(
+        "SELECT id, nombre, email, rol, email_verificado FROM usuarios WHERE id = $1",
+    )
+    .bind(user.id)
+    .fetch_one(&state.db)
+    .await?;
+    if let Some(email) = correo_nuevo {
+        let token = crate::handlers::auth::emitir_token_verificacion(&state, user.id).await?;
+        crate::handlers::auth::enviar_correo_verificacion(&state, &perfil.nombre, &email, &token)
+            .await;
+    }
+    Ok(Json(perfil))
+}
+
 pub async fn get_usuarios(
     user: CurrentUser,
     State(state): State<AppState>,

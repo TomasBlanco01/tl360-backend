@@ -4519,6 +4519,89 @@ async fn health_verifica_la_base_y_degradacion(pool: PgPool) {
     assert_eq!(body["db"], "error");
 }
 
+// ------------------------------------------------------------------ mis datos (PUT /usuarios/yo)
+
+#[sqlx::test(migrations = "./migrations")]
+async fn mis_datos_cambia_el_nombre_sin_tocar_la_verificacion(pool: PgPool) {
+    let e = escenario(pool).await;
+    let (st, v) = call(
+        &e.app,
+        "PUT",
+        "/api/usuarios/yo",
+        Some(&e.cliente.token),
+        Some(json!({ "nombre": "  Martina Gómez  ", "email": "CLIENTE@test.com" })),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(v["nombre"], "Martina Gómez");
+    assert_eq!(v["email_verificado"], json!(true), "el mismo correo (otra capitalización) no se re-verifica");
+    let (st, _) = call(&e.app, "PUT", "/api/usuarios/yo", None, Some(json!({ "nombre": "x" }))).await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED);
+    let (st, _) = call(&e.app, "PUT", "/api/usuarios/yo", Some(&e.cliente.token), Some(json!({}))).await;
+    assert_eq!(st, StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn mis_datos_un_correo_nuevo_vuelve_a_exigir_verificacion(pool: PgPool) {
+    let e = escenario(pool).await;
+    let (st, v) = call(
+        &e.app,
+        "PUT",
+        "/api/usuarios/yo",
+        Some(&e.dueno.token),
+        Some(json!({ "email": "nuevo@test.com" })),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "el dueño también edita sus datos");
+    assert_eq!(v["email"], "nuevo@test.com");
+    assert_eq!(v["email_verificado"], json!(false));
+    let tokens: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM tokens_usuario WHERE usuario_id = $1 AND tipo = 'verificar_email' AND usado_en IS NULL",
+    )
+    .bind(e.dueno.id)
+    .fetch_one(&e.pool)
+    .await
+    .unwrap();
+    assert_eq!(tokens, 1, "se emitió el enlace para verificar el correo nuevo");
+
+    let (st, v) = call(
+        &e.app,
+        "PUT",
+        "/api/usuarios/yo",
+        Some(&e.dueno.token),
+        Some(json!({ "email": "SUPER@test.com" })),
+    )
+    .await;
+    assert_eq!(st, StatusCode::CONFLICT, "{v}");
+    let (st, _) = call(&e.app, "PUT", "/api/usuarios/yo", Some(&e.dueno.token), Some(json!({ "email": "sin-arroba" }))).await;
+    assert_eq!(st, StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn mis_datos_cambiar_la_contrasena_exige_la_actual(pool: PgPool) {
+    let e = escenario(pool).await;
+    let cambiar = |actual: &'static str, nueva: &'static str| {
+        let app = e.app.clone();
+        let token = e.cliente.token.clone();
+        async move {
+            call(&app, "PUT", "/api/usuarios/yo", Some(&token), Some(json!({ "password_actual": actual, "password_nueva": nueva })))
+                .await
+        }
+    };
+    let (st, v) = cambiar("otra", "NuevaClave1").await;
+    assert_eq!(st, StatusCode::BAD_REQUEST);
+    assert_eq!(v["error"], "La contraseña actual no es correcta");
+    assert_eq!(cambiar("clave123", "123").await.0, StatusCode::BAD_REQUEST, "la nueva debe ser válida");
+    let (st, _) = call(&e.app, "PUT", "/api/usuarios/yo", Some(&e.cliente.token), Some(json!({ "password_nueva": "NuevaClave1" }))).await;
+    assert_eq!(st, StatusCode::BAD_REQUEST, "sin la actual no se cambia");
+
+    assert_eq!(cambiar("clave123", "NuevaClave1").await.0, StatusCode::OK);
+    let (st, _) = call(&e.app, "POST", "/api/auth/login", None, Some(json!({ "email": "cliente@test.com", "contraseña": "NuevaClave1" }))).await;
+    assert_eq!(st, StatusCode::OK, "la clave nueva sirve para ingresar");
+    let (st, _) = call(&e.app, "POST", "/api/auth/login", None, Some(json!({ "email": "cliente@test.com", "contraseña": "clave123" }))).await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED, "la anterior ya no");
+}
+
 // ------------------------------------------------------------------ turnos cargados por el comercio (0014)
 
 #[sqlx::test(migrations = "./migrations")]
