@@ -34,6 +34,9 @@ pub struct Empresa {
     cuit: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     constancia_cuit_url: Option<String>,
+    /// RF-15: por qué se rechazó la verificación; solo existe mientras está rechazada.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    motivo_rechazo: Option<String>,
     lat: Option<f64>,
     lng: Option<f64>,
     modo_contacto: String,
@@ -98,7 +101,7 @@ fn read_select(con_descripcion: bool, con_distancia: bool) -> String {
     format!(
         "SELECT e.id, e.nombre, e.direccion, e.telefono, e.slogan, e.duracion_turno_min, e.categoria_id, \
          e.admin_id, e.instagram, e.facebook, e.fotos, e.turnos_habilitados, e.verificado, e.verificado_estado, \
-         e.cuit, e.constancia_cuit_url, e.lat::float8 AS lat, e.lng::float8 AS lng, \
+         e.cuit, e.constancia_cuit_url, e.motivo_rechazo, e.lat::float8 AS lat, e.lng::float8 AS lng, \
          e.modo_contacto, {desc} AS descripcion, c.nombre AS categoria, \
          COALESCE((SELECT array_agg(et.nombre ORDER BY et.nombre) \
                    FROM empresa_etiquetas ee JOIN etiquetas et ON et.id = ee.etiqueta_id \
@@ -675,6 +678,10 @@ pub(crate) fn normalizar_cuit(valor: &Option<String>) -> AppResult<Option<String
 fn validar_estado_verificacion(valor: &Option<String>) -> AppResult<Option<&str>> {
     match valor.as_deref() {
         None => Ok(None),
+        // RF-15: rechazar exige un motivo, que solo se carga desde la bandeja de verificación.
+        Some("rechazado") => Err(AppError::BadRequest(
+            "Para rechazar una verificación usá la bandeja de verificación e indicá el motivo".into(),
+        )),
         Some(v) if ESTADOS_VERIFICACION.contains(&v) => Ok(Some(v)),
         Some(_) => Err(AppError::BadRequest(
             "Estado de verificación inválido".into(),
@@ -865,6 +872,7 @@ pub async fn update_empresa(
          descripcion=COALESCE($12, descripcion), cuit=COALESCE($13, cuit), \
          constancia_cuit_url=COALESCE($14, constancia_cuit_url), \
          verificado_estado=COALESCE($15, verificado_estado), \
+         motivo_rechazo=CASE WHEN $15 IS NULL THEN motivo_rechazo ELSE NULL END, \
          verificado=CASE WHEN $15 IS NULL THEN verificado ELSE ($15 = 'verificado') END, \
          modo_contacto=COALESCE($16, modo_contacto), \
          lat=COALESCE($17::numeric, lat), lng=COALESCE($18::numeric, lng) \

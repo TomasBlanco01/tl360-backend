@@ -3562,17 +3562,26 @@ async fn el_dueno_solicita_la_verificacion_con_cuit_y_el_superadmin_la_resuelve(
         .0,
         StatusCode::OK
     );
+    // Rechazar sin motivo (o con uno vacío) no se acepta: el dueño tiene que saber qué corregir.
+    for cuerpo in [json!({ "accion": "rechazar" }), json!({ "accion": "rechazar", "motivo": "  no " })] {
+        assert_eq!(
+            call(&e.app, "PUT", &uri, Some(&e.superadmin.token), Some(cuerpo)).await.0,
+            StatusCode::BAD_REQUEST
+        );
+    }
     let (st, v) = call(
         &e.app,
         "PUT",
         &uri,
         Some(&e.superadmin.token),
-        Some(json!({ "accion": "rechazar" })),
+        Some(json!({ "accion": "rechazar", "motivo": "La constancia está vencida" })),
     )
     .await;
     assert_eq!(st, StatusCode::OK);
     assert_eq!(v["verificado"], json!(false));
     assert_eq!(v["verificado_estado"], json!("rechazado"));
+    let (_, ficha) = call(&e.app, "GET", &format!("/api/empresas/{}", e.empresa), None, None).await;
+    assert_eq!(ficha["motivo_rechazo"], json!("La constancia está vencida"));
     let (_, pendientes) = call(
         &e.app,
         "GET",
@@ -4533,4 +4542,19 @@ async fn el_esquema_exige_motivo_al_rechazar_y_un_titular_por_turno(pool: PgPool
     assert!(!insertar("INSERT INTO turnos (empresa_id, fecha, hora, cliente_nombre, cliente_email) VALUES ($1, '2031-01-07', '09:00', 'Ana', 'sin-arroba')").await, "correo inválido");
     assert!(!insertar("INSERT INTO turnos (empresa_id, usuario_id, fecha, hora, cliente_nombre) SELECT $1, id, '2031-01-07', '09:00', 'Ana' FROM usuarios LIMIT 1").await, "cuenta y nombre a la vez");
     assert!(insertar("INSERT INTO turnos (empresa_id, fecha, hora, cliente_nombre) VALUES ($1, '2031-01-07', '09:00', 'Ana')").await);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn la_edicion_de_la_ficha_no_permite_rechazar_sin_motivo(pool: PgPool) {
+    let e = escenario(pool).await;
+    let (st, v) = call(
+        &e.app,
+        "PUT",
+        &format!("/api/empresas/{}", e.empresa),
+        Some(&e.superadmin.token),
+        Some(json!({ "nombre": "Peluquería Central", "direccion": "Calle 123", "categoria_id": e.categoria, "verificado_estado": "rechazado" })),
+    )
+    .await;
+    assert_eq!(st, StatusCode::BAD_REQUEST, "{v}");
+    assert!(v["error"].as_str().unwrap().contains("motivo"), "{v}");
 }

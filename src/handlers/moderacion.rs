@@ -70,10 +70,23 @@ pub struct VerificacionRequest {
     accion: String,
     cuit: Option<String>,
     constancia_cuit_url: Option<String>,
+    motivo: Option<String>,
+}
+
+/// RF-15: rechazar exige explicar el motivo (5 a 500 caracteres), igual que la base.
+fn motivo_de_rechazo(motivo: &Option<String>) -> AppResult<String> {
+    let motivo = motivo.as_deref().map(str::trim).unwrap_or_default();
+    let largo = motivo.chars().count();
+    if !(5..=500).contains(&largo) {
+        return Err(AppError::BadRequest(
+            "Indicá el motivo del rechazo (entre 5 y 500 caracteres)".into(),
+        ));
+    }
+    Ok(motivo.to_string())
 }
 
 /// RF-15: el dueño (o un superadmin) **solicita** con CUIT + constancia y queda `pendiente`;
-/// solo el superadmin **aprueba** (enciende el sello) o **rechaza** (lo apaga).
+/// solo el superadmin **aprueba** (enciende el sello) o **rechaza** (lo apaga) con un motivo.
 pub async fn set_verificacion(
     user: CurrentUser,
     State(state): State<AppState>,
@@ -112,7 +125,7 @@ pub async fn set_verificacion(
             // (la base exige verificado = (verificado_estado = 'verificado')).
             let resultado = sqlx::query_as::<_, (bool, String)>(
                 "UPDATE empresas SET cuit = $2, constancia_cuit_url = $3, \
-                 verificado_estado = 'pendiente', verificado = false \
+                 verificado_estado = 'pendiente', verificado = false, motivo_rechazo = NULL \
                  WHERE id = $1 RETURNING verificado, verificado_estado",
             )
             .bind(id)
@@ -127,10 +140,15 @@ pub async fn set_verificacion(
         "aprobar" | "rechazar" => {
             exigir_superadmin(&user)?;
             let aprobar = body.accion == "aprobar";
+            let motivo = if aprobar {
+                None
+            } else {
+                Some(motivo_de_rechazo(&body.motivo)?)
+            };
             // RF-15: solo se resuelve una solicitud pendiente y, para aprobar, debe existir
             // la constancia que el superadmin valida.
             let resultado = sqlx::query_as::<_, (bool, String)>(
-                "UPDATE empresas SET verificado = $2, verificado_estado = $3 \
+                "UPDATE empresas SET verificado = $2, verificado_estado = $3, motivo_rechazo = $4 \
                  WHERE id = $1 AND verificado_estado = 'pendiente' \
                  AND (NOT $2 OR constancia_cuit_url IS NOT NULL) \
                  RETURNING verificado, verificado_estado",
@@ -138,6 +156,7 @@ pub async fn set_verificacion(
             .bind(id)
             .bind(aprobar)
             .bind(if aprobar { "verificado" } else { "rechazado" })
+            .bind(motivo.as_deref())
             .fetch_optional(&state.db)
             .await?;
             let (verificado, estado) = match resultado {
@@ -157,7 +176,7 @@ pub async fn set_verificacion(
                     ));
                 }
             };
-            avisar_resolucion(&state, id, aprobar).await;
+            avisar_resolucion(&state, id, motivo.as_deref()).await;
             (verificado, estado)
         }
         otra => {
@@ -171,9 +190,10 @@ pub async fn set_verificacion(
     ))
 }
 
-/// RF-15: avisa al dueño la resolución de la solicitud. Si el correo falla, la moderación ya quedó
-/// guardada igual.
-async fn avisar_resolucion(state: &AppState, empresa_id: i32, aprobado: bool) {
+/// RF-15: avisa al dueño la resolución de la solicitud (con el motivo si se rechazó). Si el correo
+/// falla, la moderación ya quedó guardada igual.
+async fn avisar_resolucion(state: &AppState, empresa_id: i32, motivo_rechazo: Option<&str>) {
+    let aprobado = motivo_rechazo.is_none();
     let datos = sqlx::query_as::<_, (String, String, String)>(
         "SELECT u.email, u.nombre, e.nombre \
          FROM empresas e JOIN usuarios u ON u.id = e.admin_id WHERE e.id = $1",
@@ -183,7 +203,8 @@ async fn avisar_resolucion(state: &AppState, empresa_id: i32, aprobado: bool) {
     .await;
     match datos {
         Ok(Some((email, nombre, comercio))) => {
-            let cuerpo = crate::mailer::cuerpo_verificacion_comercio(&nombre, &comercio, aprobado);
+            let cuerpo =
+                crate::mailer::cuerpo_verificacion_comercio(&nombre, &comercio, motivo_rechazo);
             let asunto = if aprobado {
                 "Tu comercio fue verificado en TL360"
             } else {

@@ -194,11 +194,18 @@ pub fn cuerpo_turno_cancelado_por_comercio(
     )
 }
 
-pub fn cuerpo_verificacion_comercio(nombre: &str, comercio: &str, aprobado: bool) -> String {
-    let resolucion = if aprobado {
-        "fue aprobada y tu ficha ya muestra el sello de comercio verificado"
-    } else {
-        "fue rechazada. Revisá los datos de CUIT y la constancia, y volvé a solicitarla desde tu panel"
+/// `motivo_rechazo` en `None` significa aprobada.
+pub fn cuerpo_verificacion_comercio(
+    nombre: &str,
+    comercio: &str,
+    motivo_rechazo: Option<&str>,
+) -> String {
+    let resolucion = match motivo_rechazo {
+        None => "fue aprobada y tu ficha ya muestra el sello de comercio verificado".to_string(),
+        Some(motivo) => format!(
+            "fue rechazada por este motivo: {motivo}\n\n\
+             Corregí lo indicado y volvé a solicitarla desde tu panel"
+        ),
     };
     format!(
         "Hola {nombre}:\n\n\
@@ -210,6 +217,15 @@ pub fn cuerpo_verificacion_comercio(nombre: &str, comercio: &str, aprobado: bool
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn el_aviso_de_rechazo_incluye_el_motivo() {
+        let rechazo = cuerpo_verificacion_comercio("Sofía", "Estilo Urbano", Some("CUIT ilegible"));
+        assert!(rechazo.contains("fue rechazada por este motivo: CUIT ilegible"));
+        let aprobacion = cuerpo_verificacion_comercio("Sofía", "Estilo Urbano", None);
+        assert!(aprobacion.contains("fue aprobada"));
+        assert!(!aprobacion.contains("motivo"));
+    }
 
     #[test]
     fn sin_smtp_el_mailer_queda_en_modo_consola() {
