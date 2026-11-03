@@ -997,6 +997,10 @@ pub struct TurnoRecibido {
     hora: NaiveTime,
     estado: String,
     cliente_nombre: String,
+    /// Canal de contacto: el correo de la cuenta o el que dejó la persona al agendar sin cuenta.
+    cliente_email: Option<String>,
+    /// true si el comercio lo cargó a mano para alguien sin cuenta.
+    sin_cuenta: bool,
 }
 
 /// Turnos próximos de un comercio, para su dueño (o un superadmin). Los cancelados no se listan.
@@ -1007,7 +1011,13 @@ pub async fn get_turnos_empresa(
 ) -> AppResult<Json<Vec<TurnoRecibido>>> {
     verificar_dueno(&state, &user, id).await?;
     let rows = sqlx::query_as::<_, TurnoRecibido>(
-        "SELECT t.id, t.fecha, t.hora, t.estado, u.nombre AS cliente_nombre          FROM turnos t JOIN usuarios u ON u.id = t.usuario_id          WHERE t.empresa_id = $1 AND t.estado <> 'cancelado' AND t.fecha >= $2          ORDER BY t.fecha, t.hora",
+        "SELECT t.id, t.fecha, t.hora, t.estado, \
+                COALESCE(u.nombre, t.cliente_nombre) AS cliente_nombre, \
+                COALESCE(u.email, t.cliente_email) AS cliente_email, \
+                (t.usuario_id IS NULL) AS sin_cuenta \
+         FROM turnos t LEFT JOIN usuarios u ON u.id = t.usuario_id \
+         WHERE t.empresa_id = $1 AND t.estado <> 'cancelado' AND t.fecha >= $2 \
+         ORDER BY t.fecha, t.hora",
     )
     .bind(id)
     .bind(crate::agenda::ahora_local().date())

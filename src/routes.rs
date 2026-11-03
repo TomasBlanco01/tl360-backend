@@ -62,7 +62,10 @@ pub fn build(state: AppState) -> Router {
                     get(empresas::get_horarios_by_empresa),
                 )
                 .route("/:id/horarios", put(empresas::update_horarios_empresa))
-                .route("/:id/turnos", get(empresas::get_turnos_empresa))
+                .route(
+                    "/:id/turnos",
+                    get(empresas::get_turnos_empresa).post(turnos::cargar_turno),
+                )
                 .route(
                     "/:id/atenciones",
                     get(atenciones::listar).post(atenciones::crear),

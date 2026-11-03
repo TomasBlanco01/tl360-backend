@@ -4519,6 +4519,74 @@ async fn health_verifica_la_base_y_degradacion(pool: PgPool) {
     assert_eq!(body["db"], "error");
 }
 
+// ------------------------------------------------------------------ turnos cargados por el comercio (0014)
+
+#[sqlx::test(migrations = "./migrations")]
+async fn el_dueno_agenda_un_turno_para_alguien_sin_cuenta(pool: PgPool) {
+    let e = escenario(pool).await;
+    let uri = format!("/api/empresas/{}/turnos", e.empresa);
+    let f = fecha(Weekday::Tue, 3);
+    let turno = |nombre: &str, email: Option<&str>, hora: &str| {
+        json!({ "fecha": f.to_string(), "hora": hora, "cliente_nombre": nombre, "cliente_email": email })
+    };
+
+    // Solo el dueño (o un superadmin) agenda en su comercio.
+    assert_eq!(
+        call(&e.app, "POST", &uri, Some(&e.cliente.token), Some(turno("Ana", None, "09:00"))).await.0,
+        StatusCode::FORBIDDEN
+    );
+    // Validaciones: nombre obligatorio, correo válido y la misma grilla que la reserva online.
+    assert_eq!(call(&e.app, "POST", &uri, Some(&e.dueno.token), Some(turno("  ", None, "09:00"))).await.0, StatusCode::BAD_REQUEST);
+    assert_eq!(call(&e.app, "POST", &uri, Some(&e.dueno.token), Some(turno("Ana", Some("ana@"), "09:00"))).await.0, StatusCode::BAD_REQUEST);
+    assert_eq!(call(&e.app, "POST", &uri, Some(&e.dueno.token), Some(turno("Ana", None, "09:10"))).await.0, StatusCode::BAD_REQUEST, "fuera de la grilla");
+    assert_eq!(call(&e.app, "POST", &uri, Some(&e.dueno.token), Some(turno("Ana", None, "13:00"))).await.0, StatusCode::BAD_REQUEST, "fuera del horario");
+
+    let (st, v) = call(&e.app, "POST", &uri, Some(&e.dueno.token), Some(turno(" Carlos Medina ", Some("carlos@ejemplo.com"), "09:00"))).await;
+    assert_eq!(st, StatusCode::CREATED, "{v}");
+    // Comparte el horario con la reserva online: nadie puede tomar el mismo slot.
+    let (st, _) = call(&e.app, "POST", "/api/turnos/reservar", Some(&e.cliente.token), Some(reserva(e.empresa, f, "09:00"))).await;
+    assert_eq!(st, StatusCode::CONFLICT);
+    assert_eq!(
+        call(&e.app, "POST", &uri, Some(&e.dueno.token), Some(turno("Otra", None, "09:00"))).await.0,
+        StatusCode::CONFLICT
+    );
+
+    // En "Turnos recibidos" figura con su nombre, su correo y la marca de que no tiene cuenta.
+    call(&e.app, "POST", "/api/turnos/reservar", Some(&e.cliente.token), Some(reserva(e.empresa, f, "09:30"))).await;
+    let (_, recibidos) = call(&e.app, "GET", &uri, Some(&e.dueno.token), None).await;
+    let lista = recibidos.as_array().unwrap();
+    assert_eq!(lista.len(), 2);
+    assert_eq!(lista[0]["cliente_nombre"], "Carlos Medina");
+    assert_eq!(lista[0]["cliente_email"], "carlos@ejemplo.com");
+    assert_eq!(lista[0]["sin_cuenta"], json!(true));
+    assert_eq!(lista[1]["cliente_email"], "cliente@test.com", "el canal de contacto del cliente registrado");
+    assert_eq!(lista[1]["sin_cuenta"], json!(false));
+
+    // El dueño lo puede cancelar como cualquier otro turno, y el horario se libera.
+    let id = lista[0]["id"].as_i64().unwrap();
+    let (st, _) = call(&e.app, "DELETE", &format!("/api/turnos/cancelar/{id}"), Some(&e.dueno.token), None).await;
+    assert_eq!(st, StatusCode::OK);
+    let (st, _) = call(&e.app, "POST", "/api/turnos/reservar", Some(&e.cliente.token), Some(reserva(e.empresa, f, "09:00"))).await;
+    assert_eq!(st, StatusCode::OK, "el slot cancelado vuelve a estar libre");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn un_turno_sin_cuenta_no_aparece_en_mis_turnos_de_nadie(pool: PgPool) {
+    let e = escenario(pool).await;
+    let f = fecha(Weekday::Wed, 3);
+    let (st, _) = call(
+        &e.app,
+        "POST",
+        &format!("/api/empresas/{}/turnos", e.empresa),
+        Some(&e.dueno.token),
+        Some(json!({ "fecha": f.to_string(), "hora": "16:00", "cliente_nombre": "Lucía" })),
+    )
+    .await;
+    assert_eq!(st, StatusCode::CREATED);
+    let (_, mios) = call(&e.app, "GET", "/api/turnos/mis-turnos", Some(&e.cliente.token), None).await;
+    assert_eq!(mios.as_array().unwrap().len(), 0);
+}
+
 // ------------------------------------------------------------------ esquema 0014
 
 #[sqlx::test(migrations = "./migrations")]
