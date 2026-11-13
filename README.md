@@ -7,20 +7,28 @@ Backend real que pide la SRS (sección 5, Restricciones). Reemplaza al puente en
 ## Qué hay
 
 - **API** (`src/handlers`): auth (registro, login, recuperación de contraseña), usuarios, rubros,
-  comercios (búsqueda paginada, teléfonos, horarios editables, calificaciones, etiquetas RF-18),
-  verificación comercial con CUIT (RF-15), turnos, favoritos y publicidades.
-- **Esquema** (`migrations/`): 19 tablas, con las reglas de negocio impuestas en la base (turno
-  único por horario → RF-03, puntaje 1-5, roles, horarios coherentes, rubro principal siempre
-  presente en la relación N:M). Incluye las tablas de RF sin endpoint propio (tokens de verificación
-  de email y reportes) y el N:M de etiquetas con catálogo canónico (RF-18).
-- **Datos** (`db/seed/`, se cargan aparte de las migraciones):
-  - `01_rubros.sql` — 435 rubros en 10 súper rubros (nombres tomados de una guía local como referencia).
+  comercios (búsqueda paginada, teléfonos, redes, fotos, horarios editables, calificaciones, etiquetas RF-18),
+  verificación comercial con CUIT (RF-15), turnos online y de mostrador, resumen del comercio,
+  favoritos, publicidades y difusiones con aprobación (RF-06).
+- **Esquema** (`migrations/`, modelo v2 desde la `0015`; la `0016` renombra restricciones e índices y
+  deja `lat`/`lng` en `DECIMAL(9,6)`): 19 tablas en singular, textos de largo conocido como `VARCHAR(N)`
+  (el mismo máximo que valida la API), claves foráneas en todas las relaciones y las reglas de negocio
+  impuestas en la base: turno único por horario (RF-03), un titular por turno según su `origen`
+  (`online` o `mostrador`), un solo rubro por comercio (`empresa.rubro_id`), dueño en
+  `empresa.usuario_id`, un solo teléfono principal, teléfonos, redes y fotos en tablas propias
+  (`telefono_empresa`, `red_social`, `foto_empresa`), estados en tablas propias (`estado_turno`,
+  `estado_aprobacion`), puntaje 1-5, roles y horarios coherentes. Un test de integración verifica que no
+  quede ninguna tabla, columna, restricción ni índice con nombres del modelo anterior. El modelo completo
+  está en `documentos/modelo_datos/TL360 - modelo de datos v2.pdf` (fuera de este repositorio).
+- **Datos** (`db/seed/`, se cargan aparte de las migraciones, ver [Base de datos local](#base-de-datos-local-npm-run-db)):
+  - `01_rubros.sql` — 438 rubros (nombres tomados de una guía local como referencia).
   - `02_empresas.sql` — 3885 comercios importados (nombre, dirección, teléfonos, descripción, fotos).
     **Uso académico: no está versionado ni debe publicarse.** Se regenera con `tools/`.
   - `02_empresas_demo.sql` — 54 comercios **ficticios** (los del modo mock del front). Si falta
     `02_empresas.sql` (por ejemplo, en un clon limpio del repositorio), `npm run db` y `validate.mjs` usan este.
   - `03_simulados.sql` — datos **inventados** para que toda la web tenga contenido: usuarios de prueba,
-    dueños, horarios, calificaciones, etiquetas, publicidades y turnos. Ver el encabezado del archivo.
+    dueños, horarios, calificaciones, etiquetas, publicidades (aprobadas y una pendiente), difusiones y
+    turnos online y de mostrador. Ver el encabezado del archivo.
 
 Usuarios de prueba (contraseña `Demo1234!`): `admin@demo.com` (superadmin), `negocio@demo.com`
 (dueño de un comercio con turnos), `cliente@demo.com` (con turnos reservados).
@@ -33,17 +41,62 @@ Requiere Rust (toolchain MSVC en Windows, con Visual Studio Build Tools) y Node 
 
 ```bash
 cd tools && npm install
-npm run db          # Postgres real en el puerto 5433; carga los seeds la primera vez
-# en otra terminal, en tl360-backend/:
+npm run db          # terminal 1: Postgres en el puerto 5433 (ver la sección siguiente)
+# terminal 2, en tl360-backend/:
 cp .env.example .env   # y poner DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable
-cargo run
-cd tools && npm run smoke   # 42 controles de punta a punta contra el servidor
+cargo run              # aplica las migraciones; npm run db carga los seeds en cuanto terminan
+# terminal 3, con todo levantado:
+cd tools && npm run smoke && node audit.mjs
 ```
 
 **Opción B — Supabase:** poner el connection string en `.env` y `cargo run`. Las migraciones corren
-solas al arrancar (`sqlx::migrate!`). Los seeds se aplican una vez con `psql -f db/seed/0X_*.sql`.
+solas al arrancar (`sqlx::migrate!`). Los seeds se aplican una vez, **después** de las migraciones y en
+orden, con `psql -f db/seed/01_rubros.sql`, `02_empresas_demo.sql` (o `02_empresas.sql`) y `03_simulados.sql`.
 
 **Frontend:** en `tl360-frontend/.env`, `PUBLIC_MOCK_MODE=false` y `PUBLIC_API_URL=http://localhost:3001`.
+
+## Base de datos local (`npm run db`)
+
+`npm run db` (en `tools/`, ejecuta `node devdb.mjs`) deja una base PostgreSQL real en
+`postgres://postgres:postgres@127.0.0.1:5433/tl360`. Se puede correr las veces que haga falta: cada paso
+revisa el estado antes de actuar.
+
+1. **Inicia PostgreSQL** en el puerto 5433 con el paquete `embedded-postgres` (no hace falta instalar
+   Postgres). Los datos quedan en `tools/.pgdata` y **se conservan entre ejecuciones**: la primera vez se
+   inicializa el clúster; las siguientes se reutiliza. Si ya hay un Postgres escuchando en 5433 (por
+   ejemplo, uno levantado con `pg_ctl`), usa ese y no lo detiene al salir.
+2. **Crea la base `tl360` si no existe:** se conecta primero a la base administrativa `postgres`,
+   consulta `pg_database`, crea `tl360` solo si falta, cierra esa conexión y recién después se conecta a
+   `tl360`. No depende de que `.pgdata` exista: una carpeta con el clúster pero sin la base también se
+   resuelve.
+3. **Espera las migraciones:** el esquema lo crea el backend (`cargo run` aplica `migrations/` con
+   `sqlx::migrate!`). El script espera a que estén aplicadas **todas** las migraciones del repositorio
+   (las compara con `_sqlx_migrations`) y avisa cada 15 s si falta levantar el backend.
+4. **Verifica que todo sea del modelo v2:** que existan las tablas nuevas, que no existan las del modelo
+   anterior y que ningún seed use tablas o columnas que ya no existen.
+5. **Carga los datos iniciales**, solo si la base está vacía y en una sola transacción (si un seed falla,
+   no queda nada a medias y se informa el archivo y el error):
+   - `01_rubros.sql`;
+   - `02_empresas.sql` si está (comercios importados, no versionado) o, si no, `02_empresas_demo.sql`
+     (54 comercios ficticios, el caso de un clon limpio del repositorio). `DEVDB_SEED=demo npm run db`
+     fuerza los de demostración;
+   - `03_simulados.sql` (usuarios de prueba, horarios, turnos, publicidades, difusiones...).
+6. Imprime `SEED-LISTO` y **queda corriendo**: Postgres vive mientras viva el proceso.
+
+**Detener la base:** `Ctrl+C` en la terminal de `npm run db` cierra la conexión y detiene Postgres (los
+datos quedan en `.pgdata`). Si se levantó con `pg_ctl`, se detiene con
+`node_modules/@embedded-postgres/windows-x64/native/bin/pg_ctl.exe -D .pgdata stop` (desde `tools/`).
+
+**Volver a iniciarla:** `npm run db` otra vez. Encuentra la base y los datos, no recarga los seeds y
+espera a que levantes el backend como siempre.
+
+**Empezar de cero:** detener la base, borrar la carpeta `tools/.pgdata` y correr `npm run db` + `cargo run`.
+Para probar sobre una base nueva sin tocar `tl360`: `DEVDB_BASE=tl360_prueba npm run db` y levantar el
+backend con `DATABASE_URL=.../tl360_prueba` (`DEVDB_PUERTO` cambia el puerto).
+
+**Errores habituales:** todos se informan con `[devdb] ERROR: ...` y el proceso termina con código 1.
+En Windows, Postgres no se ejecuta desde una terminal "como administrador": el mensaje indica cómo
+levantarlo con `pg_ctl`, que baja los permisos, y después basta con volver a correr `npm run db`.
 
 ## Pruebas
 
@@ -52,23 +105,26 @@ solas al arrancar (`sqlx::migrate!`). Los seeds se aplican una vez con `psql -f 
 DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable" cargo test
 ```
 
-- **48 unitarias** (sin base de datos): reglas de agenda (grilla, cierre, día sin atención, anticipación de
-  cancelación), validaciones, JWT (vencido, otro secreto, `alg=none`), límite de intentos, parseo de horarios,
-  franjas superpuestas, composición de los correos, cifrado Web Push (RFC 8188/8291), VAPID, allowlist de endpoints push,
-  semana/ventana del resumen semanal RF-14, normalización/límites de etiquetas RF-18 y rango de
-  anticipación del recordatorio RF-03.
-- **71 de integración** (`tests/api.rs`): cada test crea una base PostgreSQL propia con las migraciones aplicadas
+- **50 unitarias** (sin base de datos): reglas de agenda (grilla, cierre, día sin atención, anticipación de
+  cancelación), validaciones (incluidos los largos máximos de cada `VARCHAR(N)`), JWT (vencido, otro secreto,
+  `alg=none`), límite de intentos, parseo de horarios, franjas superpuestas, composición de los correos, cifrado
+  Web Push (RFC 8188/8291), VAPID, allowlist de endpoints push, período del resumen del comercio,
+  normalización/límites de etiquetas RF-18 y rango de anticipación del recordatorio RF-03.
+- **84 de integración** (`tests/api.rs`): cada test crea una base PostgreSQL propia con las migraciones aplicadas
   (`#[sqlx::test]`) y llama a la API real: registro y login, verificación de email (RF-01, vencimiento 1 h y
   reenvío que invalida el anterior), Mis datos (perfil y contraseña), bloqueo de turnos sin verificar,
-  verificación comercial con CUIT y rechazo con motivo (RF-15), turnos agendados por el comercio (RF-04),
-  bloqueo por intentos, recuperación de contraseña, permisos por rol, comercios, horarios, reservas (incluidas 8
-  solicitudes simultáneas por el mismo horario), cancelación (cliente y dueño, RF-05), calificaciones por turno (RF-13), atenciones de
-  mostrador con métricas (RF-04), favoritos, publicidades (incluidas colectas sin comercio y el canal público de
-  difusión, RF-06), suscripciones push, recordatorios (incluida la anticipación configurable por cliente, RF-03)
-  y resumen semanal (RF-14), orden por cercanía y apertura (RF-07), etiquetas (filtro AND, alias, reemplazo y
-  vaciado, RF-18) y restricciones del esquema.
-- `tools/smoke.mjs`, `tools/audit.mjs` y `tools/vapid.mjs`: los dos primeros prueban un servidor ya levantado con
-  los datos de demo (`npm run smoke`, `node audit.mjs`) sin modificarlos; el último genera el par VAPID para push.
+  verificación comercial con CUIT y rechazo con motivo (RF-15), turnos de mostrador con nota (RF-04),
+  bloqueo por intentos, recuperación de contraseña, permisos por rol (matriz de 19 acciones con cliente, dueño
+  ajeno y sin sesión), comercios (teléfonos, redes y fotos en sus tablas, largos máximos), horarios, reservas (incluidas 8 solicitudes simultáneas por el mismo horario),
+  cancelación (cliente y dueño, RF-05), calificaciones por turno (RF-13), favoritos, publicidades con aprobación y
+  difusiones por el canal público (RF-06), resumen del comercio por período, suscripciones push, recordatorios
+  (incluida la anticipación configurable por cliente, RF-03), orden por cercanía y apertura (RF-07), etiquetas
+  (filtro AND, alias, reemplazo y vaciado, RF-18), restricciones del esquema y ausencia de nombres del modelo anterior.
+- `tools/smoke.mjs`, `tools/audit.mjs` y `tools/vapid.mjs`: los dos primeros prueban un servidor ya levantado
+  (`npm run smoke`, `node audit.mjs`; `API=http://...` cambia el destino) sin dejar los datos modificados. No suponen
+  un tamaño de catálogo: eligen el comercio de `negocio@demo.com`, un rubro con comercios y un día y hora en que
+  el comercio atiende, así que funcionan igual con los 54 comercios de demostración que con los importados. El
+  último genera el par VAPID para push.
 
 ## Variables de entorno
 
@@ -97,9 +153,13 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
 - **Reservas (RF-03/04):** el día debe tener horario cargado, la hora debe caer dentro de una franja, entrar completa
   antes del cierre y estar en la grilla (inicio de franja + múltiplos de `duracion_turno_min`, 30 min si no está
   definida). El front usa la misma grilla. Dos pedidos simultáneos por el mismo horario: uno confirma y el otro 409.
-- **Turnos agendados por el comercio (RF-04):** `POST /empresas/:id/turnos` (dueño o superadmin) agenda un turno
-  para alguien sin cuenta con `cliente_nombre` y `cliente_email` opcional; usa la misma grilla y el mismo índice
-  único que la reserva online. `GET /empresas/:id/turnos` devuelve el correo de contacto y `sin_cuenta`.
+- **Turnos de mostrador (RF-04):** `POST /empresas/:id/turnos` (dueño o superadmin) agenda un turno con
+  `origen = 'mostrador'` para alguien sin cuenta, con `cliente_nombre`, `cliente_email` y `nota` opcionales; usa la
+  misma grilla y el mismo índice único que la reserva online (`origen = 'online'`). `GET /empresas/:id/turnos`
+  devuelve el correo de contacto, el `origen`, la `nota` y `sin_cuenta`.
+- **Resumen del comercio:** `GET /empresas/:id/resumen?desde=&hasta=` (dueño o superadmin; sin fechas, los últimos
+  30 días; hasta un año) calcula a pedido los turnos online y de mostrador, cancelados, atendidos, calificaciones y
+  favoritos nuevos del período. No se guarda: el panel lo descarga en PDF.
 - **Mis datos:** `PUT /usuarios/yo` cambia nombre y correo (un correo nuevo vuelve a exigir verificación y se
   envía el enlace) o la contraseña (`password_actual` + `password_nueva`). Lo usan clientes y dueños.
 - **Favoritos (RF-10):** solo las cuentas de cliente marcan favoritos (`PUT /favoritos/:id` responde 403 al dueño
@@ -113,10 +173,15 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
 - **Calificaciones (RF-13):** `POST /empresas/:id/calificaciones` exige `turno_id` del propio cliente, del mismo
   comercio, ya realizado y no cancelado; es una por turno (reenviar la actualiza). `GET /turnos/mis-turnos` incluye
   `calificado` para no volver a ofrecer el mismo turno.
-- **Difusión (RF-06):** `POST /publicidades` con `empresa_id: null` crea una colecta/evento de la plataforma y es
-  exclusivo del superadmin; con `empresa_id`, el dueño publica en su comercio. `POST /solicitudes-publicidad` es
-  público (sin sesión) para pedir difusión; la bandeja `GET/PUT /solicitudes-publicidad` es solo del superadmin y
-  evita duplicados pendientes del mismo contacto.
+- **Publicidades (RF-06):** siempre son de un comercio. `POST /publicidades` del dueño queda `pendiente`; la del
+  superadmin, `aprobada`. `GET /publicidades` devuelve solo las aprobadas y vigentes (`fecha_inicio`/`fecha_fin`);
+  con `?estado=pendiente|…|todas` es la bandeja del superadmin (o, con `empresa_id`, la lista del dueño).
+  `PUT /publicidades/:id/estado` aprueba, rechaza o finaliza (el dueño solo puede darla de baja o reenviarla
+  después de un rechazo).
+- **Difusiones (RF-06):** colectas y eventos sin comercio. `POST /difusiones` es público (sin sesión, con límite
+  por IP) y queda `pendiente`, sin dos pendientes del mismo contacto; la que carga el superadmin nace aprobada.
+  `GET /difusiones` devuelve las aprobadas y vigentes; `?estado=…` y `PUT /difusiones/:id/estado` son del
+  superadmin.
 - **Verificación comercial (RF-15):** el dueño solicita con CUIT (11 dígitos) y constancia (URL) → queda `pendiente`;
   solo el superadmin aprueba (sello on) o rechaza (sello off) con un `motivo` obligatorio (5 a 500 caracteres) que se
   guarda en `motivo_rechazo` y le llega al dueño por correo. El toggle clásico `PUT /empresas/:id/verificado`
@@ -130,17 +195,15 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
 - **Notificaciones push (RNF-04/RF-03/14/16):** el navegador se suscribe desde `/cuenta` con la clave pública VAPID
   (`GET /push/clave-publica`) y el backend guarda endpoint + claves por usuario (`POST/DELETE /push/suscripciones`).
   El dueño recibe push al reservar o cuando el cliente cancela; el cliente recibe push si el
-  comercio cancela su turno. Los superadmins al entrar una verificación, un reporte o una solicitud
-  de difusión. **RF-03:** cada cliente elige en `/cuenta` la anticipación del recordatorio
+  comercio cancela su turno. Los superadmins al entrar una verificación, un reporte, una publicidad para
+  aprobar o un pedido de difusión. **RF-03:** cada cliente elige en `/cuenta` la anticipación del recordatorio
   (`GET/PUT /usuarios/yo/recordatorio`, 1–168 h, default 24); un proceso cada 15 min recuerda los turnos
-  confirmados dentro de esa ventana una sola vez (`turnos.recordatorio_enviado_en`). **RF-14:** cada lunes desde
-  las 09:00 (hora local), `resumen_semanal.rs` envía
-  al dueño el resumen de la semana (confirmados, cancelados y próximo turno); `resumenes_semanales` evita repetirlo.
-  Sin `VAPID_PRIVATE_KEY` todo esto queda apagado sin afectar la API. Requiere HTTPS (o `localhost`) para que el
-  service worker pueda suscribirse.
+  confirmados dentro de esa ventana una sola vez (`turno.recordatorio_enviado_en`). Sin `VAPID_PRIVATE_KEY` todo
+  esto queda apagado sin afectar la API. Requiere HTTPS (o `localhost`) para que el service worker pueda
+  suscribirse.
 - **Cercanía (RF-07):** `GET /empresas?lat=&lng=` (ambas juntas y en rango) devuelve primero los comercios
   geolocalizados, luego los abiertos y dentro de cada grupo los más cercanos (haversine). En esa consulta agrega
-  `distancia_km` y `abierto_ahora`; usa el día/hora local de Argentina y las franjas de `horarios_empresa`. Sin
+  `distancia_km` y `abierto_ahora`; usa el día/hora local de Argentina y las franjas de `horario_empresa`. Sin
   coordenadas mantiene el orden por verificación y turnos.
 - **Etiquetas (RF-18):** `GET /empresas?etiquetas=a,b` exige todas (AND) y normaliza alias al catálogo canónico
   (`Rampa de acceso`, `Baño adaptado`, `Apto celíacos`, `Acepta mascotas`, `Wi-Fi gratis`). El listado y la ficha
@@ -148,17 +211,32 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
   máximo 12 por comercio.
 - **Límite de intentos:** 5 fallos de login por (IP, correo) y 30 por IP cada 15 min → 429; recuperar contraseña,
   3 pedidos por correo y 10 por IP por hora; registro, 20 por IP por hora. Es en memoria (una sola instancia).
-- **`PUT /empresas/:id` reemplaza** los campos opcionales que no se envían (teléfono, slogan, duración, redes);
-  solo `fotos`, `turnos_habilitados`, `descripcion`, `etiquetas` y `admin_id` se conservan si faltan.
+- **Teléfonos, redes y fotos (modelo v2):** el comercio se devuelve y se recibe con las listas de sus tablas:
+  `telefonos: [{ numero, descripcion, canal, es_whatsapp, principal }]` (`telefono_empresa`, el principal
+  primero), `redes_sociales: [{ tipo, url }]` (`red_social`, tipos `instagram`, `facebook`, `tiktok`, `x`,
+  `youtube`, `web`, una por tipo) y `fotos: [url]` (`foto_empresa`, en orden). En `POST/PUT /empresas` cada lista
+  reemplaza la anterior y, si no se envía, se conserva. Si ningún teléfono viene con `principal: true`, el
+  principal es el primero; `PUT /empresas/:id/telefonos` reemplaza solo la lista de teléfonos. Un número
+  inválido o repetido, dos principales, una red desconocida o repetida o una URL que no sea http(s) responden 400.
+- **`PUT /empresas/:id`** reemplaza `slogan` y `duracion_turno_min` si no se envían; `telefonos`,
+  `redes_sociales`, `fotos`, `turnos_habilitados`, `descripcion`, `etiquetas` y `usuario_id` se conservan si faltan.
+- **Permisos:** un pedido sin sesión responde 401; con sesión pero sin permiso, 403 con el mensaje
+  `No tenés los permisos para realizar esta acción` (y el motivo cuando es una regla de rol, por ejemplo
+  `...: las reservas online se hacen con una cuenta de cliente`). El rol se lee de la base en cada pedido.
+- **Validaciones:** correo con formato completo (parte local de hasta 64 caracteres, sin puntos al borde ni
+  seguidos; dominio con etiquetas válidas y terminación de 2+ letras), teléfono con 6 a 15 dígitos y solo
+  separadores habituales, contraseña de 8+ caracteres con mayúscula, minúscula y número, y los largos de cada
+  `VARCHAR(N)`. Un correo ya registrado responde 409. El front aplica las mismas reglas.
+- **Rubros:** `GET/POST /rubros`, `PUT/DELETE /rubros/:id`; cada comercio tiene un solo `rubro_id`
+  (`GET /empresas?rubro_id=` y `GET /empresas/rubro/:id`).
 
 ## Simulaciones y límites (a propósito)
 
 - **Correo:** real por SMTP (ver variables). Sin `SMTP_HOST` se mantiene el fallback al log
   (`[simulado] correo para ...`) para desarrollo y pruebas.
 - **Push:** real con VAPID. Sin `VAPID_PRIVATE_KEY` la API responde 404 en `/push/clave-publica`, el front no
-  muestra la tarjeta de activación y no se envían recordatorios ni el resumen semanal. El horario del resumen
-  (lunes 09:00 local) es fijo; la anticipación del recordatorio se configura por cliente entre 1 y 168 h
-  (24 h por defecto).
+  muestra la tarjeta de activación y no se envían recordatorios. La anticipación del recordatorio se configura
+  por cliente entre 1 y 168 h (24 h por defecto).
 - **Verificación de email (RF-01):** implementada de punta a punta (registro sin verificar, enlace de un
   solo uso que vence en 1 h, reenvío ciego que invalida el anterior, reservar/cancelar como cliente
   exigen cuenta verificada).
@@ -170,5 +248,5 @@ DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5433/tl360?sslmode=disable"
 ## Herramientas (`tools/`)
 
 `crawl.js` (extracción de la guía de origen), `gen_seed.js` (arma `db/seed/01` y `02`), `devdb.mjs`
-(Postgres local), `smoke.mjs` (pruebas de punta a punta), `validate.mjs` (valida
-migración y seeds sobre PGlite).
+(Postgres local, ver arriba), `smoke.mjs` (pruebas de punta a punta), `audit.mjs` (seguridad y reglas de
+negocio), `validate.mjs` (valida migración y seeds sobre PGlite).
