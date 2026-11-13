@@ -1,5 +1,5 @@
 -- Generado por tools/geocode.mjs. Coordenadas © colaboradores de OpenStreetMap (ODbL), obtenidas con Nominatim.
-UPDATE empresas e SET lat = v.lat, lng = v.lng
+UPDATE empresa e SET lat = v.lat, lng = v.lng
 FROM (VALUES
   ('todotrenque', '4297', -35.982459, -62.742757),
   ('todotrenque', '4299', -35.968642, -62.732025),

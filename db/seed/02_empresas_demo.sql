@@ -4,12 +4,10 @@
 -- archivo solo cuando falta 02_empresas.sql. Las coordenadas son aproximadas y no corresponden a
 -- comercios reales. Ejecutar DESPUÉS de 01_rubros.sql y ANTES de 03_simulados.sql.
 
-INSERT INTO empresas (nombre, slug, direccion, telefono, slogan, categoria_id, instagram, facebook,
-                      fotos, imagen_portada, modo_contacto, turnos_habilitados, duracion_turno_min,
-                      lat, lng, origen, origen_id)
-SELECT v.nombre, v.slug, v.direccion, v.telefono, v.slogan, c.id, v.instagram, v.facebook,
-       v.fotos, v.portada, v.modo, v.turnos, v.duracion, v.lat::numeric, v.lng::numeric, 'propio', v.origen_id
-FROM (VALUES
+-- Los datos se preparan en una tabla temporal y se reparten entre empresa, su teléfono principal,
+-- sus redes sociales y sus fotos (modelo v2).
+CREATE TEMP TABLE _demo AS
+SELECT * FROM (VALUES
   ('Estilo Urbano Peluquería', 'estilo-urbano-peluqueria', 'Villegas 482', '2392411234', 'Cortes modernos, color y peinados para toda ocasión', 'Peluquerías', 'https://instagram.com/estilourbano.tl', NULL, ARRAY['https://picsum.photos/seed/peluqueria1-a/480/320', 'https://picsum.photos/seed/peluqueria1-b/480/320']::text[], 'https://picsum.photos/seed/peluqueria1-a/480/320', 'ambos', true, 30, -35.964300, -62.738800, 'demo-1'),
   ('Barbería Dorrego', 'barberia-dorrego', 'Dorrego 156', '2392422987', 'Cortes clásicos y afeitado a la antigua', 'Peluquerías', NULL, NULL, ARRAY['https://picsum.photos/seed/barberia2-a/480/320']::text[], 'https://picsum.photos/seed/barberia2-a/480/320', 'ambos', true, 25, -35.965900, -62.733800, 'demo-2'),
   ('PowerFit Trenque', 'powerfit-trenque', 'San Martín 745', '2392433551', 'Musculación, funcional y clases grupales', 'Gimnasios', 'https://instagram.com/powerfit.tl', 'https://facebook.com/powerfittl', ARRAY['https://picsum.photos/seed/gym3-a/480/320', 'https://picsum.photos/seed/gym3-b/480/320', 'https://picsum.photos/seed/gym3-c/480/320']::text[], 'https://picsum.photos/seed/gym3-a/480/320', 'ambos', true, 60, -35.967500, -62.728800, 'demo-3'),
@@ -65,11 +63,37 @@ FROM (VALUES
   ('Veterinaria San Roque', 'veterinaria-san-roque', 'Dorrego 300', '2392411990', 'Consultas, vacunas y peluquería canina', 'Veterinarias', 'https://instagram.com/vetsanroque', NULL, ARRAY['https://picsum.photos/seed/vet53-a/480/320', 'https://picsum.photos/seed/vet53-b/480/320']::text[], 'https://picsum.photos/seed/vet53-a/480/320', 'ambos', false, NULL, -35.965500, -62.736800, 'demo-53'),
   ('Veterinaria Amigos Fieles', 'veterinaria-amigos-fieles', 'Alsina 420', '2392422001', 'Cuidado integral para tu mascota', 'Veterinarias', NULL, NULL, ARRAY[]::text[], NULL, 'ambos', false, NULL, -35.967100, -62.731800, 'demo-54')
 ) AS v(nombre, slug, direccion, telefono, slogan, rubro, instagram, facebook, fotos, portada, modo,
-       turnos, duracion, lat, lng, origen_id)
-JOIN categorias c ON c.nombre = v.rubro
+       turnos, duracion, lat, lng, origen_id);
+
+INSERT INTO empresa (nombre, slug, direccion, slogan, rubro_id, url_imagen_portada, modo_contacto,
+                     turnos_habilitados, duracion_turno_min, lat, lng, origen, origen_id)
+SELECT v.nombre, v.slug, v.direccion, v.slogan, r.id, v.portada, v.modo, v.turnos, v.duracion,
+       v.lat::numeric, v.lng::numeric, 'propio', v.origen_id
+FROM _demo v
+JOIN rubro r ON r.nombre = v.rubro
 ON CONFLICT (origen, origen_id) DO NOTHING;
 
-INSERT INTO telefonos_empresa (empresa_id, numero, etiqueta)
+INSERT INTO telefono_empresa (empresa_id, numero, principal)
+SELECT e.id, v.telefono, true
+FROM _demo v JOIN empresa e ON e.origen = 'propio' AND e.origen_id = v.origen_id
+WHERE v.telefono IS NOT NULL
+ON CONFLICT (empresa_id, numero) DO NOTHING;
+
+INSERT INTO red_social (empresa_id, tipo, url)
+SELECT e.id, r.tipo, r.url
+FROM _demo v JOIN empresa e ON e.origen = 'propio' AND e.origen_id = v.origen_id
+CROSS JOIN LATERAL (VALUES ('instagram', v.instagram), ('facebook', v.facebook)) AS r(tipo, url)
+WHERE r.url IS NOT NULL
+ON CONFLICT (empresa_id, tipo) DO NOTHING;
+
+INSERT INTO foto_empresa (empresa_id, url, orden)
+SELECT e.id, f.url, (f.n - 1)::smallint
+FROM _demo v JOIN empresa e ON e.origen = 'propio' AND e.origen_id = v.origen_id
+CROSS JOIN LATERAL unnest(v.fotos) WITH ORDINALITY AS f(url, n);
+
+DROP TABLE _demo;
+
+INSERT INTO telefono_empresa (empresa_id, numero, descripcion)
 SELECT e.id, t.numero, t.etiqueta
 FROM (VALUES
   ('demo-1', '2392411234', 'Recepción'),
@@ -133,5 +157,5 @@ FROM (VALUES
   ('demo-53', '2392411990', 'Principal'),
   ('demo-54', '2392422001', 'Principal')
 ) AS t(origen_id, numero, etiqueta)
-JOIN empresas e ON e.origen = 'propio' AND e.origen_id = t.origen_id
-ON CONFLICT (empresa_id, numero) DO NOTHING;
+JOIN empresa e ON e.origen = 'propio' AND e.origen_id = t.origen_id
+ON CONFLICT (empresa_id, numero) DO UPDATE SET descripcion = EXCLUDED.descripcion;
