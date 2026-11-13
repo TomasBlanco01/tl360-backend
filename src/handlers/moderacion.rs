@@ -16,9 +16,7 @@ use crate::validation::url_http_opt;
 
 pub(crate) fn exigir_superadmin(user: &CurrentUser) -> AppResult<()> {
     if user.rol != "superadmin" {
-        return Err(AppError::Forbidden(
-            "Solo el administrador de la plataforma puede hacer esto".into(),
-        ));
+        return Err(AppError::sin_permisos());
     }
     Ok(())
 }
@@ -41,7 +39,7 @@ pub async fn set_verificado(
     // queda para retirarlo (por ejemplo, ante un reporte válido).
     if body.verificado {
         let empresa = sqlx::query_scalar::<_, String>(
-            "SELECT COALESCE(verificado_estado, 'sin_solicitar') FROM empresas WHERE id = $1",
+            "SELECT COALESCE(verificado_estado, 'sin_solicitar') FROM empresa WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&state.db)
@@ -52,7 +50,7 @@ pub async fn set_verificado(
         )));
     }
     let (verificado, estado) = sqlx::query_as::<_, (bool, String)>(
-        "UPDATE empresas SET verificado = false, \
+        "UPDATE empresa SET verificado = false, \
          verificado_estado = CASE WHEN verificado_estado = 'verificado' THEN 'sin_solicitar' ELSE verificado_estado END \
          WHERE id = $1 RETURNING verificado, verificado_estado",
     )
@@ -69,7 +67,7 @@ pub async fn set_verificado(
 pub struct VerificacionRequest {
     accion: String,
     cuit: Option<String>,
-    constancia_cuit_url: Option<String>,
+    url_cuit: Option<String>,
     motivo: Option<String>,
 }
 
@@ -99,9 +97,9 @@ pub async fn set_verificacion(
             let cuit = normalizar_cuit(&body.cuit)?.ok_or_else(|| {
                 AppError::BadRequest("El CUIT es obligatorio para solicitar la verificación".into())
             })?;
-            url_http_opt("constancia_cuit_url", &body.constancia_cuit_url)?;
+            url_http_opt("url_cuit", &body.url_cuit)?;
             let actual = sqlx::query_scalar::<_, Option<String>>(
-                "SELECT constancia_cuit_url FROM empresas WHERE id = $1",
+                "SELECT url_cuit FROM empresa WHERE id = $1",
             )
             .bind(id)
             .fetch_optional(&state.db)
@@ -110,7 +108,7 @@ pub async fn set_verificacion(
             // RF-15: sin constancia no hay nada que el admin pueda validar. Se puede reutilizar
             // la ya presentada al reenviar una solicitud.
             let constancia = body
-                .constancia_cuit_url
+                .url_cuit
                 .as_deref()
                 .map(str::trim)
                 .filter(|v| !v.is_empty())
@@ -124,7 +122,7 @@ pub async fn set_verificacion(
             // Una nueva solicitud vuelve a revisión: el sello se apaga hasta que se apruebe
             // (la base exige verificado = (verificado_estado = 'verificado')).
             let resultado = sqlx::query_as::<_, (bool, String)>(
-                "UPDATE empresas SET cuit = $2, constancia_cuit_url = $3, \
+                "UPDATE empresa SET cuit = $2, url_cuit = $3, \
                  verificado_estado = 'pendiente', verificado = false, motivo_rechazo = NULL \
                  WHERE id = $1 RETURNING verificado, verificado_estado",
             )
@@ -148,9 +146,9 @@ pub async fn set_verificacion(
             // RF-15: solo se resuelve una solicitud pendiente y, para aprobar, debe existir
             // la constancia que el superadmin valida.
             let resultado = sqlx::query_as::<_, (bool, String)>(
-                "UPDATE empresas SET verificado = $2, verificado_estado = $3, motivo_rechazo = $4 \
+                "UPDATE empresa SET verificado = $2, verificado_estado = $3, motivo_rechazo = $4 \
                  WHERE id = $1 AND verificado_estado = 'pendiente' \
-                 AND (NOT $2 OR constancia_cuit_url IS NOT NULL) \
+                 AND (NOT $2 OR url_cuit IS NOT NULL) \
                  RETURNING verificado, verificado_estado",
             )
             .bind(id)
@@ -163,7 +161,7 @@ pub async fn set_verificacion(
                 Some(fila) => fila,
                 None => {
                     let existe = sqlx::query_scalar::<_, bool>(
-                        "SELECT EXISTS (SELECT 1 FROM empresas WHERE id = $1)",
+                        "SELECT EXISTS (SELECT 1 FROM empresa WHERE id = $1)",
                     )
                     .bind(id)
                     .fetch_one(&state.db)
@@ -196,7 +194,7 @@ async fn avisar_resolucion(state: &AppState, empresa_id: i32, motivo_rechazo: Op
     let aprobado = motivo_rechazo.is_none();
     let datos = sqlx::query_as::<_, (String, String, String)>(
         "SELECT u.email, u.nombre, e.nombre \
-         FROM empresas e JOIN usuarios u ON u.id = e.admin_id WHERE e.id = $1",
+         FROM empresa e JOIN usuario u ON u.id = e.usuario_id WHERE e.id = $1",
     )
     .bind(empresa_id)
     .fetch_optional(&state.db)
@@ -219,7 +217,7 @@ async fn avisar_resolucion(state: &AppState, empresa_id: i32, motivo_rechazo: Op
 
 /// RF-15: avisa a los superadmins que entró una solicitud de verificación.
 async fn avisar_solicitud_verificacion(state: &AppState, empresa_id: i32) {
-    let nombre = sqlx::query_scalar::<_, String>("SELECT nombre FROM empresas WHERE id = $1")
+    let nombre = sqlx::query_scalar::<_, String>("SELECT nombre FROM empresa WHERE id = $1")
         .bind(empresa_id)
         .fetch_optional(&state.db)
         .await;
@@ -251,7 +249,7 @@ async fn avisar_superadmins(state: &AppState, titulo: &str, cuerpo: &str, url: &
 
 #[derive(Deserialize)]
 pub struct ReporteRequest {
-    motivo: String,
+    descripcion: String,
 }
 /// Cualquier usuario con sesión puede reportar una ficha (datos falsos, cerrada, ofensiva, etc.).
 pub async fn crear_reporte(
@@ -260,21 +258,21 @@ pub async fn crear_reporte(
     Path(id): Path<i32>,
     AppJson(body): AppJson<ReporteRequest>,
 ) -> AppResult<Json<Value>> {
-    let motivo = body.motivo.trim();
-    let largo = motivo.chars().count();
+    let descripcion = body.descripcion.trim();
+    let largo = descripcion.chars().count();
     if !(5..=500).contains(&largo) {
         return Err(AppError::BadRequest(
-            "El motivo debe tener entre 5 y 500 caracteres".into(),
+            "La descripción debe tener entre 5 y 500 caracteres".into(),
         ));
     }
-    let empresa = sqlx::query_scalar::<_, String>("SELECT nombre FROM empresas WHERE id = $1")
+    let empresa = sqlx::query_scalar::<_, String>("SELECT nombre FROM empresa WHERE id = $1")
         .bind(id)
         .fetch_optional(&state.db)
         .await?
         .ok_or_else(|| AppError::NotFound("Empresa no encontrada".into()))?;
     // Evita que una misma persona llene la bandeja con el mismo comercio.
     let pendiente: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM reportes WHERE empresa_id = $1 AND usuario_id = $2 AND NOT resuelto)",
+        "SELECT EXISTS (SELECT 1 FROM reporte WHERE empresa_id = $1 AND usuario_id = $2 AND NOT resuelto)",
     )
     .bind(id)
     .bind(user.id)
@@ -285,11 +283,11 @@ pub async fn crear_reporte(
             "Ya reportaste este comercio y el reporte está en revisión".into(),
         ));
     }
-    // reportes_pendiente_uq cubre la carrera entre dos envíos simultáneos que pasaron la consulta.
-    sqlx::query("INSERT INTO reportes (empresa_id, usuario_id, motivo) VALUES ($1, $2, $3)")
+    // reporte_pendiente_uq cubre la carrera entre dos envíos simultáneos que pasaron la consulta.
+    sqlx::query("INSERT INTO reporte (empresa_id, usuario_id, descripcion) VALUES ($1, $2, $3)")
         .bind(id)
         .bind(user.id)
-        .bind(motivo)
+        .bind(descripcion)
         .execute(&state.db)
         .await
         .map_err(|e| match &e {
@@ -301,7 +299,7 @@ pub async fn crear_reporte(
     avisar_superadmins(
         &state,
         "Nuevo reporte de comercio",
-        &format!("{empresa}: {motivo}"),
+        &format!("{empresa}: {descripcion}"),
         "/admin",
     )
     .await;
@@ -316,7 +314,7 @@ pub struct ReporteAdmin {
     empresa_id: i32,
     empresa_nombre: String,
     usuario_nombre: Option<String>,
-    motivo: String,
+    descripcion: String,
     resuelto: bool,
     creado_en: DateTime<Utc>,
 }
@@ -334,8 +332,8 @@ pub async fn listar_reportes(
 ) -> AppResult<Json<Vec<ReporteAdmin>>> {
     exigir_superadmin(&user)?;
     let rows = sqlx::query_as::<_, ReporteAdmin>(
-        "SELECT r.id, r.empresa_id, e.nombre AS empresa_nombre, u.nombre AS usuario_nombre, r.motivo, r.resuelto, r.creado_en \
-         FROM reportes r JOIN empresas e ON e.id = r.empresa_id LEFT JOIN usuarios u ON u.id = r.usuario_id \
+        "SELECT r.id, r.empresa_id, e.nombre AS empresa_nombre, u.nombre AS usuario_nombre, r.descripcion, r.resuelto, r.creado_en \
+         FROM reporte r JOIN empresa e ON e.id = r.empresa_id LEFT JOIN usuario u ON u.id = r.usuario_id \
          WHERE ($1 OR NOT r.resuelto) ORDER BY r.resuelto, r.creado_en DESC LIMIT 200",
     )
     .bind(filtro.resueltos.unwrap_or(false))
@@ -350,7 +348,7 @@ pub async fn resolver_reporte(
     Path(id): Path<i32>,
 ) -> AppResult<Json<Value>> {
     exigir_superadmin(&user)?;
-    let filas = sqlx::query("UPDATE reportes SET resuelto = true WHERE id = $1")
+    let filas = sqlx::query("UPDATE reporte SET resuelto = true WHERE id = $1")
         .bind(id)
         .execute(&state.db)
         .await?

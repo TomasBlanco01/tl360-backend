@@ -87,13 +87,13 @@ pub async fn pendientes(
 ) -> Result<Vec<Recordatorio>, sqlx::Error> {
     sqlx::query_as::<_, Recordatorio>(
         "SELECT t.id AS turno_id, t.usuario_id, e.nombre AS empresa_nombre, t.fecha, t.hora \
-         FROM turnos t \
-         JOIN empresas e ON e.id = t.empresa_id \
-         JOIN usuarios u ON u.id = t.usuario_id \
-         WHERE t.estado = 'confirmado' AND t.recordatorio_enviado_en IS NULL \
+         FROM turno t \
+         JOIN empresa e ON e.id = t.empresa_id \
+         JOIN usuario u ON u.id = t.usuario_id \
+         WHERE t.estado_turno_id = 1 AND t.recordatorio_enviado_en IS NULL \
            AND (t.fecha + t.hora) > $1 \
-           AND (t.fecha + t.hora) <= $1 + make_interval(hours => u.recordatorio_horas_anticipacion) \
-           AND EXISTS (SELECT 1 FROM push_suscripciones p WHERE p.usuario_id = t.usuario_id) \
+           AND (t.fecha + t.hora) <= $1 + make_interval(hours => u.recordatorio_horas) \
+           AND EXISTS (SELECT 1 FROM push_suscripcion p WHERE p.usuario_id = t.usuario_id) \
          ORDER BY t.fecha, t.hora LIMIT 200",
     )
     .bind(desde)
@@ -102,7 +102,7 @@ pub async fn pendientes(
 }
 
 pub async fn marcar_enviado(db: &PgPool, turno_id: i32) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE turnos SET recordatorio_enviado_en = now() WHERE id = $1")
+    sqlx::query("UPDATE turno SET recordatorio_enviado_en = now() WHERE id = $1")
         .bind(turno_id)
         .execute(db)
         .await?;

@@ -1,12 +1,12 @@
-pub mod atenciones;
 pub mod auth;
-pub mod categorias;
+pub mod difusiones;
 pub mod empresas;
 pub mod favoritos;
 pub mod health;
 pub mod moderacion;
 pub mod publicidades;
 pub mod push;
-pub mod solicitudes;
+pub mod resumen;
+pub mod rubros;
 pub mod turnos;
 pub mod usuarios;

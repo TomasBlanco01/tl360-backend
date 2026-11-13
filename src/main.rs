@@ -8,7 +8,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 use tl360_backend::{
-    mailer::Mailer, push::PushSender, recordatorios, resumen_semanal, routes, state::AppState,
+    mailer::Mailer, push::PushSender, recordatorios, routes, state::AppState,
 };
 
 #[tokio::main]
@@ -110,7 +110,6 @@ async fn main() {
     state.push = PushSender::desde_entorno();
     if state.push.configurado() {
         recordatorios::bucle(state.clone());
-        resumen_semanal::bucle(state.clone());
     }
 
     // Solo el front puede llamar a la API desde un navegador (CORS_ORIGINS admite varios, separados por coma).

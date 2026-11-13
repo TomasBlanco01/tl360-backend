@@ -63,6 +63,21 @@ impl IntoResponse for AppError {
 
 pub type AppResult<T> = Result<T, AppError>;
 
+/// Mensaje único de los 403: habla de permisos, no de quién es dueño de qué.
+pub const SIN_PERMISOS: &str = "No tenés los permisos para realizar esta acción";
+
+impl AppError {
+    /// 403 genérico (recurso ajeno o acción reservada al superadmin).
+    pub fn sin_permisos() -> Self {
+        AppError::Forbidden(SIN_PERMISOS.into())
+    }
+
+    /// 403 de una regla de rol, con el motivo para que la persona sepa qué hacer.
+    pub fn sin_permisos_por(motivo: &str) -> Self {
+        AppError::Forbidden(format!("{SIN_PERMISOS}: {motivo}"))
+    }
+}
+
 impl From<axum::extract::rejection::JsonRejection> for AppError {
     fn from(r: axum::extract::rejection::JsonRejection) -> Self {
         AppError::BadRequest(format!("JSON inválido: {}", r.body_text()))

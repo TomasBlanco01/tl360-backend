@@ -47,10 +47,18 @@ where
             .ok_or(AppError::Unauthorized)?;
 
         let claims = decode_token(token, &state.jwt_secret)?;
+        // El rol vigente es el de la base, no el que quedó en el token: si el superadmin cambia el
+        // rol de alguien (o la cuenta ya no existe), rige desde el próximo pedido y no recién
+        // cuando vence la sesión (6 h).
+        let rol = sqlx::query_scalar::<_, String>("SELECT rol FROM usuario WHERE id = $1")
+            .bind(claims.id)
+            .fetch_optional(&state.db)
+            .await?
+            .ok_or(AppError::InvalidToken)?;
         Ok(CurrentUser {
             id: claims.id,
             nombre: claims.nombre,
-            rol: claims.rol,
+            rol,
         })
     }
 }
@@ -70,9 +78,7 @@ pub fn require_role(user: &CurrentUser, roles: &[&str]) -> Result<(), AppError> 
     if roles.contains(&user.rol.as_str()) {
         Ok(())
     } else {
-        Err(AppError::Forbidden(
-            "No tenés permisos para realizar esta acción".into(),
-        ))
+        Err(AppError::sin_permisos())
     }
 }
 

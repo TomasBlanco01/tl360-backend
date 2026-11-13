@@ -117,7 +117,7 @@ impl PushSender {
             return 0;
         }
         let subs = sqlx::query_as::<_, Suscripcion>(
-            "SELECT id, endpoint, p256dh, auth FROM push_suscripciones WHERE usuario_id = $1",
+            "SELECT id, endpoint, p256dh, auth FROM push_suscripcion WHERE usuario_id = $1",
         )
         .bind(usuario_id)
         .fetch_all(db)
@@ -138,7 +138,7 @@ impl PushSender {
         }
         let subs = sqlx::query_as::<_, Suscripcion>(
             "SELECT p.id, p.endpoint, p.p256dh, p.auth \
-             FROM push_suscripciones p JOIN usuarios u ON u.id = p.usuario_id \
+             FROM push_suscripcion p JOIN usuario u ON u.id = p.usuario_id \
              WHERE u.rol = $1",
         )
         .bind(rol)
@@ -164,7 +164,7 @@ impl PushSender {
                 Ok(()) => entregados += 1,
                 Err(ErrorEnvio::EndpointInvalido) => {
                     tracing::info!("push: se elimina un endpoint vencido");
-                    let _ = sqlx::query("DELETE FROM push_suscripciones WHERE id = $1")
+                    let _ = sqlx::query("DELETE FROM push_suscripcion WHERE id = $1")
                         .bind(sub.id)
                         .execute(db)
                         .await;

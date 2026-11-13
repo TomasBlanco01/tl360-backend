@@ -1,13 +1,13 @@
 use axum::{
-    extract::State,
-    http::{HeaderMap, StatusCode},
+    extract::{Path, Query, State},
+    http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::FromRow;
 
-use crate::auth_extractor::{decode_token, require_role, CurrentUser};
+use crate::auth_extractor::{require_role, CurrentUser};
 use crate::errors::{AppError, AppJson, AppResult};
 use crate::state::AppState;
 use crate::validation::{email_valido, nombre_valido, password_valida};
@@ -18,6 +18,8 @@ pub struct UsuarioPublico {
     nombre: String,
     email: String,
     rol: String,
+    /// El superadmin ve quién no confirmó el correo (y puede confirmarlo él).
+    email_verificado: bool,
 }
 
 const HORAS_RECORDATORIO_MIN: i32 = 1;
@@ -44,7 +46,7 @@ pub async fn get_recordatorio(
     State(state): State<AppState>,
 ) -> AppResult<Json<Value>> {
     let horas = sqlx::query_scalar::<_, i32>(
-        "SELECT recordatorio_horas_anticipacion FROM usuarios WHERE id = $1",
+        "SELECT recordatorio_horas FROM usuario WHERE id = $1",
     )
     .bind(user.id)
     .fetch_optional(&state.db)
@@ -59,7 +61,7 @@ pub async fn set_recordatorio(
     AppJson(body): AppJson<RecordatorioRequest>,
 ) -> AppResult<Json<Value>> {
     validar_horas_recordatorio(body.horas)?;
-    sqlx::query("UPDATE usuarios SET recordatorio_horas_anticipacion = $1 WHERE id = $2")
+    sqlx::query("UPDATE usuario SET recordatorio_horas = $1 WHERE id = $2")
         .bind(body.horas)
         .bind(user.id)
         .execute(&state.db)
@@ -97,7 +99,7 @@ pub async fn actualizar_perfil(
         return Err(AppError::BadRequest("No hay datos para actualizar".into()));
     }
     let (email_actual, hash_actual) = sqlx::query_as::<_, (String, String)>(
-        r#"SELECT email, "contraseña" FROM usuarios WHERE id = $1"#,
+        r#"SELECT email, contrasena_hash FROM usuario WHERE id = $1"#,
     )
     .bind(user.id)
     .fetch_optional(&state.db)
@@ -118,7 +120,7 @@ pub async fn actualizar_perfil(
         }
         password_valida(nueva)?;
         let hash = bcrypt::hash(nueva, bcrypt::DEFAULT_COST)?;
-        sqlx::query(r#"UPDATE usuarios SET "contraseña" = $1 WHERE id = $2"#)
+        sqlx::query(r#"UPDATE usuario SET contrasena_hash = $1 WHERE id = $2"#)
             .bind(hash)
             .bind(user.id)
             .execute(&mut *tx)
@@ -128,7 +130,7 @@ pub async fn actualizar_perfil(
     let mut correo_nuevo = None;
     if let Some(nombre) = &body.nombre {
         nombre_valido(nombre)?;
-        sqlx::query("UPDATE usuarios SET nombre = $1 WHERE id = $2")
+        sqlx::query("UPDATE usuario SET nombre = $1 WHERE id = $2")
             .bind(nombre.trim())
             .bind(user.id)
             .execute(&mut *tx)
@@ -138,7 +140,7 @@ pub async fn actualizar_perfil(
         email_valido(email)?;
         let email = email.trim();
         if !email.eq_ignore_ascii_case(&email_actual) {
-            sqlx::query("UPDATE usuarios SET email = $1, email_verificado = false WHERE id = $2")
+            sqlx::query("UPDATE usuario SET email = $1, email_verificado = false WHERE id = $2")
                 .bind(email)
                 .bind(user.id)
                 .execute(&mut *tx)
@@ -155,7 +157,7 @@ pub async fn actualizar_perfil(
     tx.commit().await?;
 
     let perfil = sqlx::query_as::<_, Perfil>(
-        "SELECT id, nombre, email, rol, email_verificado FROM usuarios WHERE id = $1",
+        "SELECT id, nombre, email, rol, email_verificado FROM usuario WHERE id = $1",
     )
     .bind(user.id)
     .fetch_one(&state.db)
@@ -168,14 +170,57 @@ pub async fn actualizar_perfil(
     Ok(Json(perfil))
 }
 
+#[derive(Deserialize)]
+pub struct UsuariosQuery {
+    /// Busca por nombre o correo (sin distinguir mayúsculas ni tildes).
+    q: Option<String>,
+    rol: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+    /// Ids separados por coma: el panel muestra el nombre del dueño de cada comercio listado.
+    ids: Option<String>,
+}
+
+/// Listado del superadmin, paginado y con buscador: la tabla crece con cada registro. Sin `limit`
+/// devuelve hasta 1000 (compatibilidad); el panel pide de a una página.
 pub async fn get_usuarios(
     user: CurrentUser,
     State(state): State<AppState>,
+    Query(f): Query<UsuariosQuery>,
 ) -> AppResult<Json<Vec<UsuarioPublico>>> {
     require_role(&user, &["superadmin"])?;
-    let rows = sqlx::query_as::<_, UsuarioPublico>("SELECT id, nombre, email, rol FROM usuarios")
-        .fetch_all(&state.db)
-        .await?;
+    let q = f
+        .q
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_lowercase);
+    let rol = f.rol.as_deref().map(str::trim).filter(|s| !s.is_empty());
+    let ids = match f.ids.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        None => None,
+        Some(raw) => Some(
+            raw.split(',')
+                .map(|s| s.trim().parse::<i32>())
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|_| AppError::BadRequest("ids debe ser una lista de números".into()))?,
+        ),
+    };
+    let rows = sqlx::query_as::<_, UsuarioPublico>(
+        "SELECT id, nombre, email, rol, email_verificado FROM usuario \
+         WHERE ($1::text IS NULL \
+                OR translate(lower(nombre), 'áéíóúüñ', 'aeiouun') LIKE '%' || translate($1, 'áéíóúüñ', 'aeiouun') || '%' \
+                OR lower(email) LIKE '%' || $1 || '%') \
+           AND ($2::text IS NULL OR rol = $2) \
+           AND ($5::int4[] IS NULL OR id = ANY($5)) \
+         ORDER BY nombre, id LIMIT $3 OFFSET $4",
+    )
+    .bind(q)
+    .bind(rol)
+    .bind(f.limit.map_or(1000, |l| l.clamp(1, 1000)))
+    .bind(f.offset.unwrap_or(0).max(0))
+    .bind(ids)
+    .fetch_all(&state.db)
+    .await?;
     Ok(Json(rows))
 }
 
@@ -192,10 +237,12 @@ pub struct CrearUsuarioRequest {
 /// público es el único camino abierto y siempre nace sin verificar; esta ruta no debe servir
 /// para crear cuentas ya verificadas sin control.
 pub async fn crear_usuario(
+    user: CurrentUser,
     State(state): State<AppState>,
-    headers: HeaderMap,
     AppJson(body): AppJson<CrearUsuarioRequest>,
 ) -> AppResult<(StatusCode, Json<Value>)> {
+    // Primero los permisos (el rol vigente sale de la base, ver CurrentUser) y después los datos.
+    require_role(&user, &["superadmin"])?;
     nombre_valido(&body.nombre)?;
     email_valido(&body.email)?;
     password_valida(&body.contrasena)?;
@@ -203,26 +250,22 @@ pub async fn crear_usuario(
     if !matches!(rol, "cliente" | "admin" | "superadmin") {
         return Err(AppError::BadRequest("Rol inválido".into()));
     }
-    let token = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "));
-    let es_superadmin = token
-        .and_then(|t| decode_token(t, &state.jwt_secret).ok())
-        .map(|c| c.rol == "superadmin")
-        .unwrap_or(false);
-    if !es_superadmin {
-        return Err(AppError::Forbidden(
-            "Solo un superadmin puede crear usuarios".into(),
-        ));
+
+    let existe: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM usuario WHERE lower(email) = lower($1))")
+            .bind(body.email.trim())
+            .fetch_one(&state.db)
+            .await?;
+    if existe {
+        return Err(AppError::Conflict("Ese correo ya está registrado".into()));
     }
 
     let hash = bcrypt::hash(&body.contrasena, bcrypt::DEFAULT_COST)?;
     // Cuentas creadas por un superadmin: el superadmin avala la cuenta y nace verificada.
     // Solo el registro público crea cuentas pendientes de verificación (RF-01).
-    sqlx::query(r#"INSERT INTO usuarios (nombre, email, "contraseña", rol, email_verificado) VALUES ($1, $2, $3, $4, true)"#)
-        .bind(&body.nombre)
-        .bind(&body.email)
+    sqlx::query(r#"INSERT INTO usuario (nombre, email, contrasena_hash, rol, email_verificado) VALUES ($1, $2, $3, $4, true)"#)
+        .bind(body.nombre.trim())
+        .bind(body.email.trim())
         .bind(&hash)
         .bind(rol)
         .execute(&state.db)
@@ -232,6 +275,73 @@ pub async fn crear_usuario(
         StatusCode::CREATED,
         Json(json!({ "mensaje": "Usuario creado" })),
     ))
+}
+
+#[derive(Deserialize)]
+pub struct GestionUsuarioRequest {
+    rol: Option<String>,
+    email_verificado: Option<bool>,
+}
+
+/// Gestión de cuentas por el superadmin: cambiar el rol (p. ej. un cliente que pasa a ser dueño
+/// de comercio) y confirmar el correo de alguien que no recibió el enlace. No puede quitarse a sí
+/// mismo el rol de superadmin (la plataforma quedaría sin administrador) ni dejar sin rol de
+/// comercio a un dueño que todavía tiene comercios a su nombre.
+pub async fn gestionar_usuario(
+    user: CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+    AppJson(body): AppJson<GestionUsuarioRequest>,
+) -> AppResult<Json<UsuarioPublico>> {
+    require_role(&user, &["superadmin"])?;
+    let actual = sqlx::query_as::<_, UsuarioPublico>(
+        "SELECT id, nombre, email, rol, email_verificado FROM usuario WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Usuario no encontrado".into()))?;
+
+    let rol = body.rol.as_deref().map(str::trim).filter(|r| !r.is_empty());
+    if let Some(rol) = rol {
+        if !matches!(rol, "cliente" | "admin" | "superadmin") {
+            return Err(AppError::BadRequest("Rol inválido".into()));
+        }
+        if id == user.id && rol != "superadmin" {
+            return Err(AppError::BadRequest(
+                "No podés quitarte a vos mismo el rol de superadmin".into(),
+            ));
+        }
+        if actual.rol == "admin" && rol != "admin" {
+            let comercios: i64 =
+                sqlx::query_scalar("SELECT COUNT(*) FROM empresa WHERE usuario_id = $1")
+                    .bind(id)
+                    .fetch_one(&state.db)
+                    .await?;
+            if comercios > 0 {
+                return Err(AppError::Conflict(format!(
+                    "Tiene {comercios} comercio(s) a su nombre: reasignalos a otro dueño antes de cambiarle el rol"
+                )));
+            }
+        }
+    }
+    if body.email_verificado == Some(false) {
+        return Err(AppError::BadRequest(
+            "Solo se puede confirmar un correo, no desverificarlo".into(),
+        ));
+    }
+
+    let actualizado = sqlx::query_as::<_, UsuarioPublico>(
+        "UPDATE usuario SET rol = COALESCE($2, rol), \
+                email_verificado = email_verificado OR COALESCE($3, false) \
+         WHERE id = $1 RETURNING id, nombre, email, rol, email_verificado",
+    )
+    .bind(id)
+    .bind(rol)
+    .bind(body.email_verificado)
+    .fetch_one(&state.db)
+    .await?;
+    Ok(Json(actualizado))
 }
 
 #[cfg(test)]

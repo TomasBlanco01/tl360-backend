@@ -12,7 +12,7 @@ use crate::agenda::{ahora_local, nombre_dia, puede_cancelar, texto_anticipacion,
 use crate::auth_extractor::CurrentUser;
 use crate::errors::{AppError, AppJson, AppResult};
 use crate::state::AppState;
-use crate::validation::{email_valido, nombre_valido};
+use crate::validation::{email_valido, nombre_valido, texto_hasta_opt};
 
 #[derive(Deserialize)]
 pub struct ReservarRequest {
@@ -27,7 +27,7 @@ pub struct ReservarRequest {
 /// verificado para cancelar turnos de su propio local (RF-05).
 async fn exigir_email_verificado(state: &AppState, user_id: i32) -> AppResult<()> {
     let verificado =
-        sqlx::query_scalar::<_, bool>("SELECT email_verificado FROM usuarios WHERE id = $1")
+        sqlx::query_scalar::<_, bool>("SELECT email_verificado FROM usuario WHERE id = $1")
             .bind(user_id)
             .fetch_optional(&state.db)
             .await?
@@ -49,7 +49,7 @@ fn parse_hora(s: &str) -> AppResult<NaiveTime> {
 
 /// RF-03 v2: "ante dos solicitudes simultáneas para el mismo horario, únicamente la primera en
 /// confirmarse será aceptada; la segunda recibirá un aviso de que el horario ya no está disponible".
-/// Lo garantiza el índice único parcial `turnos_slot_activo_uq` (migración 0002) junto con
+/// Lo garantiza el índice único parcial `turno_slot_activo_uq` (turnos no cancelados) junto con
 /// `ON CONFLICT DO NOTHING`; no depende de un chequeo previo, que dos requests podrían pisarse.
 /// Antes de insertar se valida contra los horarios del comercio (día, franja, grilla, no pasado).
 pub async fn reservar_turno(
@@ -57,11 +57,16 @@ pub async fn reservar_turno(
     State(state): State<AppState>,
     AppJson(body): AppJson<ReservarRequest>,
 ) -> AppResult<Json<Value>> {
+    // La reserva online es del cliente: es quien la ve y la cancela en "Mi cuenta". El dueño
+    // agenda en su comercio desde Mi Negocio y el superadmin no opera como cliente.
+    if user.rol != "cliente" {
+        return Err(AppError::sin_permisos_por("las reservas online se hacen con una cuenta de cliente; el comercio agenda sus turnos desde Mi Negocio"));
+    }
     exigir_email_verificado(&state, user.id).await?;
     let hora = parse_hora(&body.hora)?;
 
     let (habilitado, duracion) = sqlx::query_as::<_, (bool, Option<i32>)>(
-        "SELECT turnos_habilitados, duracion_turno_min FROM empresas WHERE id = $1",
+        "SELECT turnos_habilitados, duracion_turno_min::int4 FROM empresa WHERE id = $1",
     )
     .bind(body.empresa_id)
     .fetch_optional(&state.db)
@@ -74,7 +79,7 @@ pub async fn reservar_turno(
     }
 
     let franjas = sqlx::query_as::<_, (NaiveTime, NaiveTime)>(
-        "SELECT hora_inicio, hora_fin FROM horarios_empresa WHERE empresa_id = $1 AND dia_semana = $2",
+        "SELECT hora_inicio, hora_fin FROM horario_empresa WHERE empresa_id = $1 AND dia_semana = $2",
     )
     .bind(body.empresa_id)
     .bind(nombre_dia(body.fecha))
@@ -84,9 +89,9 @@ pub async fn reservar_turno(
         .map_err(AppError::BadRequest)?;
 
     let insertado = sqlx::query_scalar::<_, i32>(
-        "INSERT INTO turnos (empresa_id, usuario_id, fecha, hora, estado) \
-         VALUES ($1, $2, $3, $4, 'confirmado') \
-         ON CONFLICT (empresa_id, fecha, hora) WHERE estado <> 'cancelado' DO NOTHING \
+        "INSERT INTO turno (empresa_id, usuario_id, fecha, hora, origen, estado_turno_id) \
+         VALUES ($1, $2, $3, $4, 'online', 1) \
+         ON CONFLICT (empresa_id, fecha, hora) WHERE estado_turno_id <> 2 DO NOTHING \
          RETURNING id",
     )
     .bind(body.empresa_id)
@@ -96,11 +101,12 @@ pub async fn reservar_turno(
     .fetch_optional(&state.db)
     .await?;
 
-    if insertado.is_none() {
+    let Some(id) = insertado else {
         return Err(AppError::Conflict("Turno ya ocupado".into()));
-    }
+    };
     enviar_confirmacion(&state, &user, body.empresa_id, body.fecha, hora).await;
-    Ok(Json(json!({ "message": "Turno reservado correctamente" })))
+    // El id sirve al front para el evento de calendario (UID estable del .ics).
+    Ok(Json(json!({ "message": "Turno reservado correctamente", "id": id })))
 }
 
 #[derive(Deserialize)]
@@ -109,12 +115,15 @@ pub struct CargarTurnoRequest {
     hora: String,
     cliente_nombre: String,
     cliente_email: Option<String>,
+    /// Nota libre del comercio (hasta 300 caracteres).
+    nota: Option<String>,
 }
 
-/// RF-04: el comercio agenda un turno para alguien sin cuenta (por teléfono o en el local) y deja
-/// su nombre y, si lo tiene, su correo. Usa la misma grilla y el mismo índice único que la reserva
-/// online, así que no puede pisar un horario ya tomado. No exige reservas online habilitadas: el
-/// comercio puede agendar aunque no ofrezca turnos por la web.
+/// RF-04: turno de mostrador. El comercio lo agenda para alguien sin cuenta (por teléfono o en el
+/// local) y deja su nombre y, si los tiene, su correo y una nota; queda con origen 'mostrador'. Usa
+/// la misma grilla y el mismo índice único que la reserva online, así que no puede pisar un horario
+/// ya tomado. No exige reservas online habilitadas: el comercio puede agendar aunque no ofrezca
+/// turnos por la web.
 pub async fn cargar_turno(
     user: CurrentUser,
     State(state): State<AppState>,
@@ -132,16 +141,18 @@ pub async fn cargar_turno(
     if let Some(e) = email {
         email_valido(e)?;
     }
+    texto_hasta_opt("La nota", &body.nota, 300)?;
+    let nota = body.nota.as_deref().map(str::trim).filter(|n| !n.is_empty());
     let hora = parse_hora(&body.hora)?;
 
     let (duracion, comercio, direccion) = sqlx::query_as::<_, (Option<i32>, String, String)>(
-        "SELECT duracion_turno_min, nombre, direccion FROM empresas WHERE id = $1",
+        "SELECT duracion_turno_min::int4, nombre, direccion FROM empresa WHERE id = $1",
     )
     .bind(empresa_id)
     .fetch_one(&state.db)
     .await?;
     let franjas = sqlx::query_as::<_, (NaiveTime, NaiveTime)>(
-        "SELECT hora_inicio, hora_fin FROM horarios_empresa WHERE empresa_id = $1 AND dia_semana = $2",
+        "SELECT hora_inicio, hora_fin FROM horario_empresa WHERE empresa_id = $1 AND dia_semana = $2",
     )
     .bind(empresa_id)
     .bind(nombre_dia(body.fecha))
@@ -151,9 +162,9 @@ pub async fn cargar_turno(
         .map_err(AppError::BadRequest)?;
 
     let id = sqlx::query_scalar::<_, i32>(
-        "INSERT INTO turnos (empresa_id, fecha, hora, estado, cliente_nombre, cliente_email) \
-         VALUES ($1, $2, $3, 'confirmado', $4, $5) \
-         ON CONFLICT (empresa_id, fecha, hora) WHERE estado <> 'cancelado' DO NOTHING \
+        "INSERT INTO turno (empresa_id, fecha, hora, origen, estado_turno_id, cliente_nombre, cliente_email, nota) \
+         VALUES ($1, $2, $3, 'mostrador', 1, $4, $5, $6) \
+         ON CONFLICT (empresa_id, fecha, hora) WHERE estado_turno_id <> 2 DO NOTHING \
          RETURNING id",
     )
     .bind(empresa_id)
@@ -161,6 +172,7 @@ pub async fn cargar_turno(
     .bind(hora)
     .bind(nombre)
     .bind(email)
+    .bind(nota)
     .fetch_optional(&state.db)
     .await?
     .ok_or_else(|| AppError::Conflict("Turno ya ocupado".into()))?;
@@ -193,15 +205,15 @@ async fn enviar_confirmacion(
     hora: NaiveTime,
 ) {
     let datos = sqlx::query_as::<_, (String, String, String, Option<i32>)>(
-        "SELECT e.nombre, e.direccion, u.email, e.admin_id \
-         FROM empresas e JOIN usuarios u ON u.id = $2 WHERE e.id = $1",
+        "SELECT e.nombre, e.direccion, u.email, e.usuario_id \
+         FROM empresa e JOIN usuario u ON u.id = $2 WHERE e.id = $1",
     )
     .bind(empresa_id)
     .bind(user.id)
     .fetch_optional(&state.db)
     .await;
     match datos {
-        Ok(Some((comercio, direccion, email, admin_id))) => {
+        Ok(Some((comercio, direccion, email, dueno_id))) => {
             let fecha = fecha.format("%d/%m/%Y").to_string();
             let hora = hora.format("%H:%M").to_string();
             let cuerpo = crate::mailer::cuerpo_turno_confirmado(
@@ -215,7 +227,7 @@ async fn enviar_confirmacion(
                 .mailer
                 .enviar_o_loggear(&email, "Tu turno en TL360 quedó confirmado", cuerpo)
                 .await;
-            if let Some(admin_id) = admin_id {
+            if let Some(dueno_id) = dueno_id {
                 let cuerpo = format!(
                     "{} reservó para el {fecha} a las {hora} en {comercio}",
                     user.nombre
@@ -224,7 +236,7 @@ async fn enviar_confirmacion(
                     .push
                     .enviar_a_usuario(
                         &state.db,
-                        admin_id,
+                        dueno_id,
                         &crate::push::Notificacion {
                             titulo: "Nuevo turno reservado",
                             cuerpo: &cuerpo,
@@ -248,6 +260,9 @@ pub struct MiTurno {
     empresa_id: i32,
     empresa_nombre: String,
     empresa_slug: Option<String>,
+    /// Para el evento de calendario (.ics / Google Calendar) del turno.
+    empresa_direccion: String,
+    duracion_min: Option<i32>,
     calificado: bool,
 }
 
@@ -265,12 +280,14 @@ pub async fn get_mis_turnos(
 ) -> AppResult<Json<Vec<MiTurno>>> {
     let rows = sqlx::query_as::<_, MiTurno>(
         r#"
-        SELECT t.id, t.fecha, t.hora, t.estado, t.empresa_id, e.nombre AS empresa_nombre,
-               e.slug AS empresa_slug, (k.id IS NOT NULL) AS calificado
-        FROM turnos t
-        JOIN empresas e ON e.id = t.empresa_id
-        LEFT JOIN calificaciones k ON k.turno_id = t.id
-        WHERE t.usuario_id = $1 AND ($2 OR t.estado <> 'cancelado')
+        SELECT t.id, t.fecha, t.hora, et.nombre AS estado, t.empresa_id, e.nombre AS empresa_nombre,
+               e.slug AS empresa_slug, e.direccion AS empresa_direccion,
+               e.duracion_turno_min::int4 AS duracion_min, (k.id IS NOT NULL) AS calificado
+        FROM turno t
+        JOIN estado_turno et ON et.id = t.estado_turno_id
+        JOIN empresa e ON e.id = t.empresa_id
+        LEFT JOIN calificacion k ON k.turno_id = t.id
+        WHERE t.usuario_id = $1 AND ($2 OR et.nombre <> 'cancelado')
         ORDER BY t.fecha ASC, t.hora ASC
         "#,
     )
@@ -297,7 +314,7 @@ pub async fn get_turnos_ocupados(
     Query(q): Query<OcupadosQuery>,
 ) -> AppResult<Json<Vec<HoraOcupada>>> {
     let horas = sqlx::query_scalar::<_, NaiveTime>(
-        "SELECT hora FROM turnos WHERE empresa_id = $1 AND fecha = $2 AND estado <> 'cancelado' ORDER BY hora",
+        "SELECT hora FROM turno WHERE empresa_id = $1 AND fecha = $2 AND estado_turno_id <> 2 ORDER BY hora",
     )
     .bind(q.empresa_id)
     .bind(q.fecha)
@@ -324,27 +341,27 @@ struct TurnoCancelable {
     cliente_id: Option<i32>,
     cliente_nombre: String,
     cliente_email: Option<String>,
-    admin_id: Option<i32>,
+    dueno_id: Option<i32>,
 }
 
 /// RF-05: cancela el cliente dueño del turno (con la anticipación mínima del comercio) o el dueño
 /// del comercio (sin esa restricción y avisando al cliente). El turno no se borra: pasa a
-/// `cancelado` y su horario queda libre para otros clientes.
+/// `cancelado` (estado_turno) y su horario queda libre para otros clientes.
 pub async fn cancelar_turno(
     user: CurrentUser,
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> AppResult<Json<Value>> {
     let turno = sqlx::query_as::<_, TurnoCancelable>(
-        "SELECT t.fecha, t.hora, e.anticipacion_cancelacion_min AS anticipacion, \
+        "SELECT t.fecha, t.hora, e.anticipacion_cancelacion_min::int4 AS anticipacion, \
                 e.nombre AS comercio, t.usuario_id AS cliente_id, \
                 COALESCE(u.nombre, t.cliente_nombre) AS cliente_nombre, \
-                COALESCE(u.email, t.cliente_email) AS cliente_email, e.admin_id \
-         FROM turnos t \
-         JOIN empresas e ON e.id = t.empresa_id \
-         LEFT JOIN usuarios u ON u.id = t.usuario_id \
-         WHERE t.id = $1 AND t.estado = 'confirmado' \
-           AND (t.usuario_id = $2 OR e.admin_id = $2)",
+                COALESCE(u.email, t.cliente_email) AS cliente_email, e.usuario_id AS dueno_id \
+         FROM turno t \
+         JOIN empresa e ON e.id = t.empresa_id \
+         LEFT JOIN usuario u ON u.id = t.usuario_id \
+         WHERE t.id = $1 AND t.estado_turno_id = 1 \
+           AND (t.usuario_id = $2 OR e.usuario_id = $2)",
     )
     .bind(id)
     .bind(user.id)
@@ -354,7 +371,7 @@ pub async fn cancelar_turno(
         "Turno no encontrado o no autorizado".into(),
     ))?;
 
-    let es_dueno = turno.admin_id == Some(user.id);
+    let es_dueno = turno.dueno_id == Some(user.id);
     let ahora = ahora_local();
     if es_dueno {
         if turno.fecha.and_time(turno.hora) <= ahora {
@@ -373,10 +390,11 @@ pub async fn cancelar_turno(
     }
 
     let result = sqlx::query(
-        "UPDATE turnos t SET estado = 'cancelado' \
-         FROM empresas e \
-         WHERE t.id = $1 AND e.id = t.empresa_id AND t.estado = 'confirmado' \
-           AND (t.usuario_id = $2 OR e.admin_id = $2)",
+        "UPDATE turno t SET estado_turno_id = (SELECT id FROM estado_turno WHERE nombre = 'cancelado') \
+         FROM empresa e \
+         WHERE t.id = $1 AND e.id = t.empresa_id \
+           AND t.estado_turno_id = (SELECT id FROM estado_turno WHERE nombre = 'confirmado') \
+           AND (t.usuario_id = $2 OR e.usuario_id = $2)",
     )
     .bind(id)
     .bind(user.id)
@@ -435,7 +453,7 @@ pub async fn cancelar_turno(
                 .enviar_o_loggear(email, "Tu turno en TL360 fue cancelado", cuerpo)
                 .await;
         }
-        if let Some(admin_id) = turno.admin_id {
+        if let Some(dueno_id) = turno.dueno_id {
             let cuerpo = format!(
                 "{} canceló el turno del {fecha} a las {hora} en {}",
                 turno.cliente_nombre, turno.comercio
@@ -444,7 +462,7 @@ pub async fn cancelar_turno(
                 .push
                 .enviar_a_usuario(
                     &state.db,
-                    admin_id,
+                    dueno_id,
                     &crate::push::Notificacion {
                         titulo: "Turno cancelado",
                         cuerpo: &cuerpo,
