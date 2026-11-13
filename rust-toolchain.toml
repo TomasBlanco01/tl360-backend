@@ -1,0 +1,4 @@
+# Fija la versión de Rust: sqlx 0.7 no compila con Rust 1.100+ (cambio de inferencia del tipo `!`).
+# Render y cualquier máquina nueva usan esta misma versión que la de desarrollo.
+[toolchain]
+channel = "1.99.1"
