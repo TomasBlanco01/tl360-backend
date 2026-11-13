@@ -8,7 +8,6 @@ pub mod mailer;
 pub mod push;
 pub mod rate_limit;
 pub mod recordatorios;
-pub mod resumen_semanal;
 pub mod routes;
 pub mod state;
 pub mod validation;

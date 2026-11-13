@@ -6,26 +6,31 @@ use axum::{
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sqlx::{FromRow, PgPool};
+use sqlx::{types::Json as SqlJson, FromRow, PgPool};
 use std::collections::{HashMap, HashSet};
 
 use crate::auth_extractor::CurrentUser;
 use crate::errors::{AppError, AppJson, AppResult};
 use crate::state::AppState;
-use crate::validation::{url_http, url_http_opt};
+use crate::validation::{telefono_valido, texto_hasta, texto_hasta_opt, url_http, url_http_opt};
 
+/// Ficha del comercio. Los teléfonos, las redes sociales y las fotos viven en sus propias tablas
+/// (telefono_empresa, red_social, foto_empresa) y viajan como listas, igual que en el modelo.
 #[derive(FromRow, Serialize)]
 pub struct Empresa {
     id: i32,
     nombre: String,
+    slug: Option<String>,
     direccion: String,
-    telefono: Option<String>,
     slogan: Option<String>,
     duracion_turno_min: Option<i32>,
-    categoria_id: i32,
-    admin_id: Option<i32>,
-    instagram: Option<String>,
-    facebook: Option<String>,
+    rubro_id: i32,
+    usuario_id: Option<i32>,
+    /// telefono_empresa: el principal primero.
+    telefonos: SqlJson<Vec<Telefono>>,
+    /// red_social: una por tipo.
+    redes_sociales: SqlJson<Vec<RedSocial>>,
+    /// foto_empresa: URLs en el orden de la galería.
     fotos: Vec<String>,
     turnos_habilitados: bool,
     verificado: bool,
@@ -33,7 +38,7 @@ pub struct Empresa {
     #[serde(skip_serializing_if = "Option::is_none")]
     cuit: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    constancia_cuit_url: Option<String>,
+    url_cuit: Option<String>,
     /// RF-15: por qué se rechazó la verificación; solo existe mientras está rechazada.
     #[serde(skip_serializing_if = "Option::is_none")]
     motivo_rechazo: Option<String>,
@@ -43,7 +48,7 @@ pub struct Empresa {
     #[serde(skip_serializing_if = "Option::is_none")]
     descripcion: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    categoria: Option<String>,
+    rubro: Option<String>,
     /// RF-18: etiquetas descriptivas del comercio, ordenadas alfabéticamente.
     etiquetas: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -58,13 +63,26 @@ pub struct Empresa {
     abierto_ahora: Option<bool>,
 }
 
-#[derive(FromRow, Serialize)]
+#[derive(FromRow, Serialize, Deserialize)]
 pub struct Telefono {
     id: i32,
     numero: String,
-    etiqueta: Option<String>,
-    modo_contacto: Option<String>,
+    descripcion: Option<String>,
+    /// Canal de ese número; NULL hereda el `modo_contacto` del comercio.
+    canal: Option<String>,
+    es_whatsapp: bool,
+    /// El número que se muestra primero en la ficha (uno por comercio).
+    principal: bool,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct RedSocial {
+    tipo: String,
+    url: String,
+}
+
+const SELECT_TELEFONOS: &str = "SELECT id, numero, descripcion, canal, es_whatsapp, principal \
+     FROM telefono_empresa WHERE empresa_id = $1 ORDER BY principal DESC, id";
 
 /// SELECT común de lectura. En el listado se omite la descripción (texto largo × miles de comercios)
 /// y se devuelve completa solo en la ficha individual.
@@ -77,13 +95,13 @@ const DISTANCIA_KM: &str = "CASE WHEN e.lat IS NULL OR e.lng IS NULL THEN NULL E
     ))) END";
 
 /// RF-07: usa el día/hora local (`$10`/`$11`) para saber si el comercio está abierto.
-const ABIERTO_AHORA: &str = "EXISTS (SELECT 1 FROM horarios_empresa h \
+const ABIERTO_AHORA: &str = "EXISTS (SELECT 1 FROM horario_empresa h \
     WHERE h.empresa_id = e.id AND h.dia_semana = $10::text \
       AND $11::time >= h.hora_inicio AND $11::time < h.hora_fin)";
 
 fn read_select(con_descripcion: bool, con_distancia: bool) -> String {
     let desc = if con_descripcion {
-        "e.descripcion"
+        "e.descripcion::text"
     } else {
         "NULL::text"
     };
@@ -99,18 +117,52 @@ fn read_select(con_descripcion: bool, con_distancia: bool) -> String {
         )
     };
     format!(
-        "SELECT e.id, e.nombre, e.direccion, e.telefono, e.slogan, e.duracion_turno_min, e.categoria_id, \
-         e.admin_id, e.instagram, e.facebook, e.fotos, e.turnos_habilitados, e.verificado, e.verificado_estado, \
-         e.cuit, e.constancia_cuit_url, e.motivo_rechazo, e.lat::float8 AS lat, e.lng::float8 AS lng, \
-         e.modo_contacto, {desc} AS descripcion, c.nombre AS categoria, \
-         COALESCE((SELECT array_agg(et.nombre ORDER BY et.nombre) \
-                   FROM empresa_etiquetas ee JOIN etiquetas et ON et.id = ee.etiqueta_id \
+        "SELECT e.id, e.nombre, e.slug, e.direccion, \
+         e.slogan, e.duracion_turno_min::int4 AS duracion_turno_min, e.rubro_id, e.usuario_id, \
+         COALESCE((SELECT jsonb_agg(jsonb_build_object('id', t.id, 'numero', t.numero, \
+                     'descripcion', t.descripcion, 'canal', t.canal, 'es_whatsapp', t.es_whatsapp, \
+                     'principal', t.principal) ORDER BY t.principal DESC, t.id) \
+                   FROM telefono_empresa t WHERE t.empresa_id = e.id), '[]'::jsonb) AS telefonos, \
+         COALESCE((SELECT jsonb_agg(jsonb_build_object('tipo', rs.tipo, 'url', rs.url) ORDER BY rs.tipo) \
+                   FROM red_social rs WHERE rs.empresa_id = e.id), '[]'::jsonb) AS redes_sociales, \
+         COALESCE((SELECT array_agg(f.url::text ORDER BY f.orden, f.id) FROM foto_empresa f \
+                   WHERE f.empresa_id = e.id), ARRAY[]::text[]) AS fotos, \
+         e.turnos_habilitados, e.verificado, e.verificado_estado, \
+         e.cuit, e.url_cuit, e.motivo_rechazo, e.lat::float8 AS lat, e.lng::float8 AS lng, \
+         e.modo_contacto, {desc} AS descripcion, r.nombre AS rubro, \
+         COALESCE((SELECT array_agg(et.nombre::text ORDER BY et.nombre) \
+                   FROM empresa_etiqueta ee JOIN etiqueta et ON et.id = ee.etiqueta_id \
                    WHERE ee.empresa_id = e.id), ARRAY[]::text[]) AS etiquetas, \
-         (SELECT ROUND(AVG(k.puntaje)::numeric, 1)::float8 FROM calificaciones k WHERE k.empresa_id = e.id) AS calificacion_promedio, \
-         (SELECT COUNT(*) FROM calificaciones k WHERE k.empresa_id = e.id) AS calificacion_cantidad, \
+         (SELECT ROUND(AVG(k.puntaje)::numeric, 1)::float8 FROM calificacion k WHERE k.empresa_id = e.id) AS calificacion_promedio, \
+         (SELECT COUNT(*) FROM calificacion k WHERE k.empresa_id = e.id) AS calificacion_cantidad, \
          {distancia}, {abierto} \
-         FROM empresas e LEFT JOIN categorias c ON c.id = e.categoria_id"
+         FROM empresa e LEFT JOIN rubro r ON r.id = e.rubro_id"
     )
+}
+
+impl Empresa {
+    /// Datos de la verificación comercial (CUIT, constancia fiscal, motivo de rechazo y si la
+    /// solicitud está pendiente o fue rechazada): solo los ven el dueño del comercio y el
+    /// superadmin. El resto ve únicamente si tiene el sello de verificado.
+    fn para(mut self, user: Option<&CurrentUser>) -> Self {
+        let autorizado =
+            user.is_some_and(|u| u.rol == "superadmin" || Some(u.id) == self.usuario_id);
+        if !autorizado {
+            self.cuit = None;
+            self.url_cuit = None;
+            self.motivo_rechazo = None;
+            self.verificado_estado = if self.verificado {
+                "verificado".into()
+            } else {
+                "sin_solicitar".into()
+            };
+        }
+        self
+    }
+}
+
+fn para_todos(rows: Vec<Empresa>, user: Option<&CurrentUser>) -> Vec<Empresa> {
+    rows.into_iter().map(|e| e.para(user)).collect()
 }
 
 async fn fetch_empresa(db: &PgPool, id: i32) -> AppResult<Empresa> {
@@ -124,8 +176,8 @@ async fn fetch_empresa(db: &PgPool, id: i32) -> AppResult<Empresa> {
 #[derive(Deserialize)]
 pub struct ListQuery {
     q: Option<String>,
-    categoria_id: Option<i32>,
-    admin_id: Option<i32>,
+    rubro_id: Option<i32>,
+    usuario_id: Option<i32>,
     verificado_estado: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
@@ -134,6 +186,26 @@ pub struct ListQuery {
     lng: Option<f64>,
     /// RF-18: etiquetas separadas por coma; se exigen todas (AND).
     etiquetas: Option<String>,
+    /// Ids separados por coma (hasta 200), en ese orden: el mapa pide las fichas de los comercios
+    /// que quedan a la vista.
+    ids: Option<String>,
+}
+
+const MAX_IDS: usize = 200;
+
+fn ids_filtro(raw: &Option<String>) -> AppResult<Option<Vec<i32>>> {
+    let Some(raw) = raw.as_deref().map(str::trim).filter(|s| !s.is_empty()) else {
+        return Ok(None);
+    };
+    let ids = raw
+        .split(',')
+        .map(|s| s.trim().parse::<i32>())
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| AppError::BadRequest("ids debe ser una lista de números separados por coma".into()))?;
+    if ids.len() > MAX_IDS {
+        return Err(AppError::BadRequest(format!("Se piden hasta {MAX_IDS} comercios por vez")));
+    }
+    Ok(Some(ids))
 }
 
 /// Catálogo canónico de RF-18 y sus alias habituales (claves sin acentos ni signos).
@@ -301,12 +373,24 @@ fn normalizar_busqueda(texto: &str) -> String {
     salida.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// RF-07: reglas locales de lenguaje natural; no requiere un modelo de IA.
+/// RF-07: reglas locales de lenguaje natural; no requiere un modelo de IA. Los sinónimos se buscan
+/// como palabra completa (con su plural): "bar" encuentra "Bares" pero no "Barberías".
 fn sinonimos_busqueda(palabra: &str) -> &'static [&'static str] {
     match palabra {
-        "comida" => &["gastronomia", "restaurante", "bar", "comer", "menu"],
+        "comida" | "comidas" | "comer" => &[
+            "comida",
+            "gastronomia",
+            "restaurante",
+            "bar",
+            "rotiseria",
+            "pizzeria",
+            "parrilla",
+            "cafeteria",
+            "catering",
+            "pastas",
+        ],
         "gastronomia" => &["gastronomia", "restaurante", "comida"],
-        "restaurante" => &["gastronomia", "restaurante", "comida", "bar"],
+        "restaurante" | "restaurant" => &["gastronomia", "restaurante", "comida", "bar", "parrilla"],
         "peluqueria" => &[
             "peluqueria",
             "barberia",
@@ -329,7 +413,9 @@ fn sinonimos_busqueda(palabra: &str) -> &'static [&'static str] {
         "masaje" | "masajes" => &["masaje", "masajes", "relax", "spa"],
         "dentista" => &["odontologia", "dental"],
         "medico" => &["salud", "clinica", "consultorio"],
-        "perro" | "gato" => &["veterinaria", "mascota"],
+        "perro" | "perros" | "gato" | "gatos" => &["veterinaria"],
+        "carne" | "carnes" | "asado" => &["carniceria", "frigorifico"],
+        "pizza" | "pizzas" => &["pizzeria", "gastronomia"],
         "kiosco" | "almacen" => &["almacen", "kiosco", "drugstore"],
         "ropa" | "indumentaria" => &["indumentaria", "ropa", "calzado", "tienda"],
         "farmacia" => &["farmacia", "medicamento"],
@@ -339,137 +425,263 @@ fn sinonimos_busqueda(palabra: &str) -> &'static [&'static str] {
     }
 }
 
+/// Palabras que no aportan a la búsqueda ("corte de pelo" no debe buscar "de" en todos lados).
+const PALABRAS_VACIAS: [&str; 16] = [
+    "de", "del", "la", "las", "el", "los", "un", "una", "con", "para", "por", "en", "y", "o", "a",
+    "al",
+];
+
+/// Términos de búsqueda, con un prefijo que dice cómo se buscan:
+/// - sin prefijo: lo escrito, como comienzo de palabra ("pelu" encuentra "Peluquería", pero "uñas"
+///   no encuentra "vacunas"), en nombre, rubro, etiquetas y descripción;
+/// - `!`: lo escrito cuando es una palabra conocida del diccionario, como palabra completa (con su
+///   plural), así "comer" no trae "Comercio", "perro" no trae "Perroud" ni "carne" trae "carnet";
+/// - `=`: un sinónimo, como palabra completa y solo en el nombre y el rubro, para que "comida" no
+///   traiga barberías (por "bar") y "perro" no traiga todo comercio con la etiqueta "Acepta mascotas".
 fn expandir_busqueda(q: &str) -> Option<Vec<String>> {
     let base = normalizar_busqueda(q);
     if base.is_empty() {
         return None;
     }
     let mut terminos: Vec<String> = Vec::new();
-    let mut agregar = |valor: &str| {
-        let valor = normalizar_busqueda(valor);
-        if !valor.is_empty() && !terminos.contains(&valor) {
-            terminos.push(valor);
+    let mut agregar = |valor: String| {
+        let palabra = valor.trim_start_matches(['=', '!']);
+        if palabra.is_empty() {
+            return;
+        }
+        // Lo escrito (sin prefijo o con `!`) ya cubre al sinónimo igual.
+        if terminos.iter().any(|t| t.trim_start_matches(['=', '!']) == palabra) {
+            return;
+        }
+        terminos.push(valor);
+    };
+    let escrito = |palabra: &str| {
+        if sinonimos_busqueda(palabra).is_empty() {
+            palabra.to_string()
+        } else {
+            format!("!{palabra}")
         }
     };
-    agregar(&base);
+    agregar(escrito(&base));
     for palabra in base.split(' ') {
-        agregar(palabra);
+        if palabra.chars().count() < 3 || PALABRAS_VACIAS.contains(&palabra) {
+            continue;
+        }
+        agregar(escrito(palabra));
         for sinonimo in sinonimos_busqueda(palabra) {
-            agregar(sinonimo);
+            agregar(format!("={}", normalizar_busqueda(sinonimo)));
         }
     }
     for sinonimo in sinonimos_busqueda(&base) {
-        agregar(sinonimo);
+        agregar(format!("={}", normalizar_busqueda(sinonimo)));
     }
     Some(terminos)
 }
 
+/// Palabra completa (con su plural) para un término sin su prefijo.
+fn palabra_completa(columna: &str) -> String {
+    format!("{columna} ~ ('\\m' || ltrim(buscado.termino, '=!') || '(s|es)?\\M')")
+}
+
+/// Condición SQL para un término de `expandir_busqueda` sobre una columna ya normalizada.
+fn coincide_termino(columna: &str) -> String {
+    format!(
+        "(CASE WHEN left(buscado.termino, 1) IN ('=', '!') THEN {} \
+            ELSE {columna} ~ ('\\m' || buscado.termino) END)",
+        palabra_completa(columna)
+    )
+}
+
+/// Filtros compartidos por el listado y el mapa (búsqueda RF-07, rubro y etiquetas RF-18), con los
+/// números de parámetro de cada consulta. Requiere `empresa e LEFT JOIN rubro r`.
+fn filtro_directorio(p_busqueda: u8, p_rubro: u8, p_etiquetas: u8) -> String {
+    let norm = |col: &str| format!("translate(lower({col}), 'áéíóúüñ', 'aeiouun')");
+    format!(
+        "(${p_busqueda}::text[] IS NULL OR EXISTS ( \
+             SELECT 1 FROM unnest(${p_busqueda}::text[]) AS buscado(termino) \
+             WHERE {} OR {} OR {} \
+                OR EXISTS ( \
+                    SELECT 1 FROM empresa_etiqueta ee JOIN etiqueta et ON et.id = ee.etiqueta_id \
+                    WHERE ee.empresa_id = e.id AND left(buscado.termino, 1) <> '=' AND {} \
+                ) \
+         )) \
+         AND (${p_rubro}::int4 IS NULL OR e.rubro_id = ${p_rubro}) \
+         AND (${p_etiquetas}::text[] IS NULL OR NOT EXISTS ( \
+             SELECT 1 FROM unnest(${p_etiquetas}::text[]) AS pedida(nombre) \
+             WHERE NOT EXISTS ( \
+                 SELECT 1 FROM empresa_etiqueta ee JOIN etiqueta et ON et.id = ee.etiqueta_id \
+                 WHERE ee.empresa_id = e.id AND lower(et.nombre) = lower(pedida.nombre) \
+             ) \
+         ))",
+        coincide_termino(&norm("e.nombre")),
+        coincide_termino(&norm("COALESCE(r.nombre, '')")),
+        // En la descripción solo se busca lo que escribió el usuario: un sinónimo como "parrilla"
+        // aparece en herrerías que las fabrican y no debe traerlas al buscar "comida".
+        format!(
+            "(left(buscado.termino, 1) <> '=' AND {})",
+            coincide_termino(&norm("COALESCE(e.descripcion, '')"))
+        ),
+        // Los signos se comparan como espacio ("wi-fi") y también pegados ("wifi"), igual que se
+        // normaliza lo que escribe el usuario: las dos encuentran "Wi-Fi gratis".
+        format!(
+            "({} OR {})",
+            coincide_termino(&format!(
+                "regexp_replace({}, '[^a-z0-9 ]', ' ', 'g')",
+                norm("et.nombre")
+            )),
+            coincide_termino(&format!(
+                "regexp_replace({}, '[^a-z0-9 ]', '', 'g')",
+                norm("et.nombre")
+            )),
+        ),
+    )
+}
+
+/// RF-07: con búsqueda, el orden es
+/// 0. lo escrito como palabra completa en el nombre o el rubro ("bar" → Bares, "comida" → Casas de
+///    Comidas);
+/// 1. lo escrito como comienzo de palabra en el nombre o el rubro ("bar" → Barberías);
+/// 2. un sinónimo en el nombre o el rubro ("comida" → Pizzerías);
+/// 3. lo que solo lo menciona en la descripción o en una etiqueta.
+fn orden_relevancia(p_busqueda: u8) -> String {
+    let norm = |col: &str| format!("translate(lower({col}), 'áéíóúüñ', 'aeiouun')");
+    let nombre = norm("e.nombre");
+    let rubro = norm("COALESCE(r.nombre, '')");
+    let existe = |condicion: String| {
+        format!(
+            "EXISTS (SELECT 1 FROM unnest(${p_busqueda}::text[]) AS buscado(termino) \
+             WHERE {condicion})"
+        )
+    };
+    let escrito = "left(buscado.termino, 1) <> '='";
+    format!(
+        "(CASE WHEN ${p_busqueda}::text[] IS NULL THEN 0 WHEN {} THEN 0 WHEN {} THEN 1 \
+          WHEN {} THEN 2 ELSE 3 END)",
+        existe(format!(
+            "{escrito} AND ({} OR {})",
+            palabra_completa(&nombre),
+            palabra_completa(&rubro)
+        )),
+        existe(format!(
+            "{escrito} AND ({} OR {})",
+            coincide_termino(&nombre),
+            coincide_termino(&rubro)
+        )),
+        existe(format!(
+            "{} OR {}",
+            coincide_termino(&nombre),
+            coincide_termino(&rubro)
+        )),
+    )
+}
+
 pub async fn get_empresas(
+    user: Option<CurrentUser>,
     State(state): State<AppState>,
     Query(f): Query<ListQuery>,
 ) -> AppResult<Json<Vec<Empresa>>> {
+    // La bandeja de moderación (pendientes, rechazados) es solo del superadmin.
+    if f.verificado_estado.as_deref().is_some_and(|s| !s.trim().is_empty())
+        && !user.as_ref().is_some_and(|u| u.rol == "superadmin")
+    {
+        return Err(AppError::sin_permisos());
+    }
     let geo = coordenadas(&f)?;
     let etiquetas = etiquetas_filtro(&f.etiquetas);
     let busqueda = f.q.as_deref().and_then(expandir_busqueda);
-    let orden = if geo.is_some() {
-        ORDEN_CERCANIA
+    let ids = ids_filtro(&f.ids)?;
+    let orden = if ids.is_some() {
+        "ORDER BY array_position($12::int4[], e.id)".to_string()
+    } else if geo.is_some() {
+        ORDEN_CERCANIA.to_string()
     } else {
-        ORDEN_LISTADO
+        ORDEN_LISTADO.replacen("ORDER BY ", &format!("ORDER BY {}, ", orden_relevancia(1)), 1)
     };
     let sql = format!(
-        "{} WHERE ($1::text[] IS NULL OR EXISTS ( \
-             SELECT 1 FROM unnest($1::text[]) AS buscado(termino) \
-             WHERE translate(lower(e.nombre), 'áéíóúüñ', 'aeiouun') LIKE '%' || buscado.termino || '%' \
-                OR translate(lower(COALESCE(c.nombre, '')), 'áéíóúüñ', 'aeiouun') LIKE '%' || buscado.termino || '%' \
-                OR translate(lower(COALESCE(e.descripcion, '')), 'áéíóúüñ', 'aeiouun') LIKE '%' || buscado.termino || '%' \
-                OR EXISTS ( \
-                    SELECT 1 FROM empresa_etiquetas ee JOIN etiquetas et ON et.id = ee.etiqueta_id \
-                    WHERE ee.empresa_id = e.id \
-                      AND translate(lower(et.nombre), 'áéíóúüñ', 'aeiouun') LIKE '%' || buscado.termino || '%' \
-                ) \
-         )) \
-         AND ($2::int4 IS NULL OR e.categoria_id = $2 \
-              OR EXISTS (SELECT 1 FROM empresa_categorias ec WHERE ec.empresa_id = e.id AND ec.categoria_id = $2)) \
-         AND ($5::int4 IS NULL OR e.admin_id = $5) \
+        "{} WHERE {} \
+         AND ($5::int4 IS NULL OR e.usuario_id = $5) \
          AND ($6::text IS NULL OR e.verificado_estado = $6) \
-         AND ($7::text[] IS NULL OR NOT EXISTS ( \
-             SELECT 1 FROM unnest($7::text[]) AS pedida(nombre) \
-             WHERE NOT EXISTS ( \
-                 SELECT 1 FROM empresa_etiquetas ee JOIN etiquetas et ON et.id = ee.etiqueta_id \
-                 WHERE ee.empresa_id = e.id AND lower(et.nombre) = lower(pedida.nombre) \
-             ) \
-         )) \n         {orden} LIMIT $3::int8 OFFSET $4::int8",
-        read_select(false, geo.is_some())
+         AND ($12::int4[] IS NULL OR e.id = ANY($12::int4[])) \
+         {orden} LIMIT $3::int8 OFFSET $4::int8",
+        read_select(false, geo.is_some()),
+        filtro_directorio(1, 2, 7),
     );
-    let mut consulta = sqlx::query_as::<_, Empresa>(&sql)
+    let ahora = crate::agenda::ahora_local();
+    // $8-$11 solo se usan al ordenar por cercanía; se envían siempre (tipados) para que $12 exista.
+    let rows = sqlx::query_as::<_, Empresa>(&sql)
         .bind(busqueda)
-        .bind(f.categoria_id)
+        .bind(f.rubro_id)
         .bind(f.limit.map_or(LIMITE_MAXIMO, |l| l.clamp(1, 1000)))
         .bind(f.offset.unwrap_or(0).max(0))
-        .bind(f.admin_id)
+        .bind(f.usuario_id)
         .bind(
             f.verificado_estado
                 .as_deref()
                 .map(str::trim)
                 .filter(|s| !s.is_empty()),
         )
-        .bind(etiquetas);
-    if let Some((lat, lng)) = geo {
-        let ahora = crate::agenda::ahora_local();
-        consulta = consulta
-            .bind(lat)
-            .bind(lng)
-            .bind(crate::agenda::nombre_dia(ahora.date()))
-            .bind(ahora.time());
-    }
-    let rows = consulta.fetch_all(&state.db).await?;
-    Ok(Json(rows))
+        .bind(etiquetas)
+        .bind(geo.map(|g| g.0))
+        .bind(geo.map(|g| g.1))
+        .bind(crate::agenda::nombre_dia(ahora.date()))
+        .bind(ahora.time())
+        .bind(ids)
+        .fetch_all(&state.db)
+        .await?;
+    Ok(Json(para_todos(rows, user.as_ref())))
 }
 
-pub async fn get_empresas_by_categoria(
+pub async fn get_empresas_by_rubro(
+    user: Option<CurrentUser>,
     State(state): State<AppState>,
-    Path(categoria_id): Path<i32>,
+    Path(rubro_id): Path<i32>,
 ) -> AppResult<Json<Vec<Empresa>>> {
     let rows = sqlx::query_as::<_, Empresa>(&format!(
-        "{} WHERE e.categoria_id = $1 \
-         OR EXISTS (SELECT 1 FROM empresa_categorias ec WHERE ec.empresa_id = e.id AND ec.categoria_id = $1) \
-         {ORDEN_LISTADO}",
+        "{} WHERE e.rubro_id = $1 {ORDEN_LISTADO}",
         read_select(false, false)
     ))
-    .bind(categoria_id)
+    .bind(rubro_id)
     .fetch_all(&state.db)
     .await?;
-    Ok(Json(rows))
+    Ok(Json(para_todos(rows, user.as_ref())))
+}
+
+/// La ficha pública se comparte por slug (`/comercios/peluqueria-central`), pero las
+/// operaciones internas siguen usando el ID numérico. Aceptamos ambos en las lecturas.
+async fn resolver_empresa_id(db: &PgPool, id_o_slug: &str) -> AppResult<i32> {
+    let criterio = id_o_slug.trim();
+    if criterio.is_empty() {
+        return Err(AppError::NotFound("Empresa no encontrada".into()));
+    }
+    let id = sqlx::query_scalar::<_, i32>(
+        "SELECT id FROM empresa WHERE id::text = $1 OR slug = $1 \
+         ORDER BY (id::text = $1) DESC LIMIT 1",
+    )
+    .bind(criterio)
+    .fetch_optional(db)
+    .await?;
+    id.ok_or_else(|| AppError::NotFound("Empresa no encontrada".into()))
 }
 
 pub async fn get_empresa_by_id(
+    user: Option<CurrentUser>,
     State(state): State<AppState>,
-    Path(id): Path<i32>,
-) -> AppResult<Json<Value>> {
-    let empresa = fetch_empresa(&state.db, id).await?;
-
-    let telefonos = sqlx::query_as::<_, Telefono>(
-        "SELECT id, numero, etiqueta, modo_contacto FROM telefonos_empresa WHERE empresa_id = $1 ORDER BY id",
-    )
-    .bind(id)
-    .fetch_all(&state.db)
-    .await?;
-
-    let mut value = serde_json::to_value(empresa).unwrap();
-    value["telefonos"] = serde_json::to_value(telefonos).unwrap();
-    Ok(Json(value))
+    Path(id_o_slug): Path<String>,
+) -> AppResult<Json<Empresa>> {
+    let id = resolver_empresa_id(&state.db, &id_o_slug).await?;
+    Ok(Json(
+        fetch_empresa(&state.db, id).await?.para(user.as_ref()),
+    ))
 }
 
 pub async fn get_telefonos_by_empresa(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> AppResult<Json<Vec<Telefono>>> {
-    let rows = sqlx::query_as::<_, Telefono>(
-        "SELECT id, numero, etiqueta, modo_contacto FROM telefonos_empresa WHERE empresa_id = $1 ORDER BY id",
-    )
-    .bind(id)
-    .fetch_all(&state.db)
-    .await?;
+    let rows = sqlx::query_as::<_, Telefono>(SELECT_TELEFONOS)
+        .bind(id)
+        .fetch_all(&state.db)
+        .await?;
     Ok(Json(rows))
 }
 
@@ -492,7 +704,7 @@ struct HorarioRow {
 
 async fn horarios_de(db: &PgPool, empresa_id: i32) -> AppResult<HashMap<String, Vec<String>>> {
     let rows = sqlx::query_as::<_, HorarioRow>(
-        "SELECT dia_semana, hora_inicio, hora_fin FROM horarios_empresa WHERE empresa_id = $1 ORDER BY hora_inicio",
+        "SELECT dia_semana, hora_inicio, hora_fin FROM horario_empresa WHERE empresa_id = $1 ORDER BY hora_inicio",
     )
     .bind(empresa_id)
     .fetch_all(db)
@@ -516,8 +728,9 @@ async fn horarios_de(db: &PgPool, empresa_id: i32) -> AppResult<HashMap<String, 
 
 pub async fn get_horarios_by_empresa(
     State(state): State<AppState>,
-    Path(empresa_id): Path<i32>,
+    Path(empresa_id_o_slug): Path<String>,
 ) -> AppResult<Json<HashMap<String, Vec<String>>>> {
+    let empresa_id = resolver_empresa_id(&state.db, &empresa_id_o_slug).await?;
     Ok(Json(horarios_de(&state.db, empresa_id).await?))
 }
 
@@ -585,12 +798,12 @@ pub async fn update_horarios_empresa(
     verificar_dueno(&state, &user, id).await?;
 
     let mut tx = state.db.begin().await?;
-    sqlx::query("DELETE FROM horarios_empresa WHERE empresa_id = $1")
+    sqlx::query("DELETE FROM horario_empresa WHERE empresa_id = $1")
         .bind(id)
         .execute(&mut *tx)
         .await?;
     for (dia, ini, fin) in filas {
-        sqlx::query("INSERT INTO horarios_empresa (empresa_id, dia_semana, hora_inicio, hora_fin) VALUES ($1, $2, $3, $4)")
+        sqlx::query("INSERT INTO horario_empresa (empresa_id, dia_semana, hora_inicio, hora_fin) VALUES ($1, $2, $3, $4)")
             .bind(id)
             .bind(dia)
             .bind(ini)
@@ -606,20 +819,22 @@ pub async fn update_horarios_empresa(
 pub struct EmpresaRequest {
     nombre: String,
     direccion: String,
-    telefono: Option<String>,
     slogan: Option<String>,
     duracion_turno_min: Option<i32>,
-    categoria_id: i32,
-    admin_id: Option<i32>,
-    instagram: Option<String>,
-    facebook: Option<String>,
+    rubro_id: i32,
+    usuario_id: Option<i32>,
+    /// Teléfonos (tabla telefono_empresa): ausente conserva los actuales; la lista los reemplaza.
+    telefonos: Option<Vec<TelefonoInput>>,
+    /// Redes sociales (tabla red_social): ausente conserva las actuales; la lista las reemplaza.
+    redes_sociales: Option<Vec<RedSocial>>,
+    /// Galería (tabla foto_empresa): ausente conserva las actuales.
     fotos: Option<Vec<String>>,
     /// RF-18: ausente conserva las actuales; `[]` las borra.
     etiquetas: Option<Vec<String>>,
     turnos_habilitados: Option<bool>,
     descripcion: Option<String>,
     cuit: Option<String>,
-    constancia_cuit_url: Option<String>,
+    url_cuit: Option<String>,
     verificado_estado: Option<String>,
     /// RF-04: punto elegido en el mapa; se envían juntos o ambos quedan vacíos.
     lat: Option<f64>,
@@ -630,6 +845,7 @@ pub struct EmpresaRequest {
 
 const ESTADOS_VERIFICACION: [&str; 4] = ["sin_solicitar", "pendiente", "verificado", "rechazado"];
 const MODOS_CONTACTO: [&str; 3] = ["llamada", "mensaje", "ambos"];
+const MAX_FOTOS: usize = 20;
 
 fn validar_coordenadas(lat: Option<f64>, lng: Option<f64>) -> AppResult<()> {
     match (lat, lng) {
@@ -689,20 +905,47 @@ fn validar_estado_verificacion(valor: &Option<String>) -> AppResult<Option<&str>
     }
 }
 
+/// Texto opcional sin espacios sobrantes; vacío equivale a no informado.
+fn limpio(valor: &Option<String>) -> Option<&str> {
+    valor.as_deref().map(str::trim).filter(|s| !s.is_empty())
+}
+
 fn validar_ficha(b: &EmpresaRequest) -> AppResult<()> {
     if b.nombre.trim().is_empty() || b.direccion.trim().is_empty() {
         return Err(AppError::BadRequest(
             "Nombre y dirección son obligatorios".into(),
         ));
     }
-    url_http_opt("instagram", &b.instagram)?;
-    url_http_opt("facebook", &b.facebook)?;
-    url_http_opt("constancia_cuit_url", &b.constancia_cuit_url)?;
+    // Los mismos máximos que las columnas VARCHAR(N) del modelo.
+    texto_hasta("El nombre", &b.nombre, 100)?;
+    texto_hasta("La dirección", &b.direccion, 150)?;
+    texto_hasta_opt("El slogan", &b.slogan, 150)?;
+    texto_hasta_opt("La descripción", &b.descripcion, 2000)?;
+    if let Some(telefonos) = &b.telefonos {
+        validar_telefonos(telefonos)?;
+    }
+    if let Some(redes) = &b.redes_sociales {
+        validar_redes(redes)?;
+    }
+    url_http_opt("url_cuit", &b.url_cuit)?;
     normalizar_cuit(&b.cuit)?;
     validar_estado_verificacion(&b.verificado_estado)?;
     validar_coordenadas(b.lat, b.lng)?;
     validar_modo_contacto(&b.modo_contacto)?;
-    for f in b.fotos.iter().flatten() {
+    if let Some(d) = b.duracion_turno_min {
+        if !(1..=480).contains(&d) {
+            return Err(AppError::BadRequest(
+                "La duración del turno debe estar entre 1 y 480 minutos".into(),
+            ));
+        }
+    }
+    let fotos = b.fotos.as_deref().unwrap_or_default();
+    if fotos.len() > MAX_FOTOS {
+        return Err(AppError::BadRequest(format!(
+            "Se permiten hasta {MAX_FOTOS} fotos por comercio"
+        )));
+    }
+    for f in fotos {
         url_http("foto", f)?;
     }
     Ok(())
@@ -714,26 +957,178 @@ async fn reemplazar_etiquetas(
     empresa_id: i32,
     etiquetas: &[String],
 ) -> AppResult<()> {
-    sqlx::query("DELETE FROM empresa_etiquetas WHERE empresa_id = $1")
+    sqlx::query("DELETE FROM empresa_etiqueta WHERE empresa_id = $1")
         .bind(empresa_id)
         .execute(&mut **tx)
         .await?;
     for nombre in etiquetas {
         let etiqueta_id = sqlx::query_scalar::<_, i32>(
-            "INSERT INTO etiquetas (nombre) VALUES ($1) \
+            "INSERT INTO etiqueta (nombre) VALUES ($1) \
              ON CONFLICT (nombre) DO UPDATE SET nombre = EXCLUDED.nombre RETURNING id",
         )
         .bind(nombre)
         .fetch_one(&mut **tx)
         .await?;
         sqlx::query(
-            "INSERT INTO empresa_etiquetas (empresa_id, etiqueta_id) VALUES ($1, $2) \
+            "INSERT INTO empresa_etiqueta (empresa_id, etiqueta_id) VALUES ($1, $2) \
              ON CONFLICT DO NOTHING",
         )
         .bind(empresa_id)
         .bind(etiqueta_id)
         .execute(&mut **tx)
         .await?;
+    }
+    Ok(())
+}
+
+const MAX_TELEFONOS: usize = 10;
+/// Los mismos tipos que admite el CHECK de red_social.
+const TIPOS_RED_SOCIAL: [&str; 6] = ["instagram", "facebook", "tiktok", "x", "youtube", "web"];
+
+/// Lista de teléfonos de la ficha: números válidos, sin repetir y con un solo principal.
+fn validar_telefonos(telefonos: &[TelefonoInput]) -> AppResult<()> {
+    if telefonos.len() > MAX_TELEFONOS {
+        return Err(AppError::BadRequest(format!(
+            "Se permiten hasta {MAX_TELEFONOS} teléfonos por comercio"
+        )));
+    }
+    let mut vistos = HashSet::new();
+    for t in telefonos {
+        telefono_valido(&t.numero)?;
+        texto_hasta_opt("La descripción del teléfono", &t.descripcion, 50)?;
+        validar_modo_contacto(&t.canal)?;
+        if !vistos.insert(t.numero.trim().to_string()) {
+            return Err(AppError::BadRequest(format!(
+                "El teléfono {} está repetido",
+                t.numero.trim()
+            )));
+        }
+    }
+    if telefonos.iter().filter(|t| t.principal == Some(true)).count() > 1 {
+        return Err(AppError::BadRequest(
+            "Solo un teléfono puede ser el principal".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// Redes sociales: tipos conocidos, una por tipo y URL http(s).
+fn validar_redes(redes: &[RedSocial]) -> AppResult<()> {
+    let mut vistos = HashSet::new();
+    for r in redes {
+        if !TIPOS_RED_SOCIAL.contains(&r.tipo.as_str()) {
+            return Err(AppError::BadRequest(format!(
+                "Red social desconocida: '{}'. Se admiten {}",
+                r.tipo,
+                TIPOS_RED_SOCIAL.join(", ")
+            )));
+        }
+        if !vistos.insert(r.tipo.as_str()) {
+            return Err(AppError::BadRequest(format!(
+                "La red '{}' está repetida",
+                r.tipo
+            )));
+        }
+        if r.url.trim().is_empty() {
+            return Err(AppError::BadRequest(format!(
+                "Falta la dirección de {}",
+                r.tipo
+            )));
+        }
+        url_http(&r.tipo, &r.url)?;
+    }
+    Ok(())
+}
+
+/// Reemplaza los teléfonos del comercio. Si ninguno viene marcado como principal, lo es el primero.
+async fn reemplazar_telefonos(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    empresa_id: i32,
+    telefonos: &[TelefonoInput],
+) -> AppResult<()> {
+    sqlx::query("DELETE FROM telefono_empresa WHERE empresa_id = $1")
+        .bind(empresa_id)
+        .execute(&mut **tx)
+        .await?;
+    let principal = telefonos
+        .iter()
+        .position(|t| t.principal == Some(true))
+        .unwrap_or(0);
+    for (i, t) in telefonos.iter().enumerate() {
+        sqlx::query(
+            "INSERT INTO telefono_empresa (empresa_id, numero, descripcion, canal, es_whatsapp, principal) \
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(empresa_id)
+        .bind(t.numero.trim())
+        .bind(limpio(&t.descripcion))
+        .bind(validar_modo_contacto(&t.canal)?)
+        .bind(t.es_whatsapp.unwrap_or(false))
+        .bind(i == principal)
+        .execute(&mut **tx)
+        .await?;
+    }
+    Ok(())
+}
+
+async fn reemplazar_redes(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    empresa_id: i32,
+    redes: &[RedSocial],
+) -> AppResult<()> {
+    sqlx::query("DELETE FROM red_social WHERE empresa_id = $1")
+        .bind(empresa_id)
+        .execute(&mut **tx)
+        .await?;
+    for r in redes {
+        sqlx::query("INSERT INTO red_social (empresa_id, tipo, url) VALUES ($1, $2, $3)")
+            .bind(empresa_id)
+            .bind(&r.tipo)
+            .bind(r.url.trim())
+            .execute(&mut **tx)
+            .await?;
+    }
+    Ok(())
+}
+
+async fn reemplazar_fotos(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    empresa_id: i32,
+    fotos: &[String],
+) -> AppResult<()> {
+    sqlx::query("DELETE FROM foto_empresa WHERE empresa_id = $1")
+        .bind(empresa_id)
+        .execute(&mut **tx)
+        .await?;
+    for (orden, url) in fotos.iter().map(|f| f.trim()).filter(|f| !f.is_empty()).enumerate() {
+        sqlx::query("INSERT INTO foto_empresa (empresa_id, url, orden) VALUES ($1, $2, $3)")
+            .bind(empresa_id)
+            .bind(url)
+            .bind(orden as i16)
+            .execute(&mut **tx)
+            .await?;
+    }
+    Ok(())
+}
+
+/// Teléfonos, redes, fotos y etiquetas (los que vengan), en la misma transacción que la ficha.
+async fn guardar_contacto(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    empresa_id: i32,
+    body: &EmpresaRequest,
+    etiquetas: &Option<Vec<String>>,
+) -> AppResult<()> {
+    if let Some(telefonos) = &body.telefonos {
+        reemplazar_telefonos(tx, empresa_id, telefonos).await?;
+    }
+    if let Some(redes) = &body.redes_sociales {
+        reemplazar_redes(tx, empresa_id, redes).await?;
+    }
+    if let Some(fotos) = &body.fotos {
+        reemplazar_fotos(tx, empresa_id, fotos).await?;
+    }
+    if let Some(lista) = etiquetas {
+        reemplazar_etiquetas(tx, empresa_id, lista).await?;
     }
     Ok(())
 }
@@ -745,15 +1140,13 @@ pub async fn create_empresa(
 ) -> AppResult<(StatusCode, Json<Empresa>)> {
     // RF-01: solo una cuenta de comercio (admin) o de plataforma puede registrar un negocio.
     if user.rol != "admin" && user.rol != "superadmin" {
-        return Err(AppError::Forbidden(
-            "Solo una cuenta de comercio puede registrar un negocio".into(),
-        ));
+        return Err(AppError::sin_permisos_por("solo una cuenta de comercio puede registrar un negocio"));
     }
     // Un admin de negocio solo puede crear una empresa a su propio nombre; solo un superadmin
-    // puede asignarla a otro usuario pasando admin_id en el body.
+    // puede asignarla a otro usuario pasando usuario_id en el body.
     validar_ficha(&body)?;
-    let admin_id = if user.rol == "superadmin" && body.admin_id.is_some() {
-        body.admin_id
+    let usuario_id = if user.rol == "superadmin" && body.usuario_id.is_some() {
+        body.usuario_id
     } else {
         Some(user.id)
     };
@@ -770,25 +1163,20 @@ pub async fn create_empresa(
 
     let mut tx = state.db.begin().await?;
     let id = sqlx::query_scalar::<_, i32>(
-        "INSERT INTO empresas (nombre, direccion, telefono, slogan, duracion_turno_min, categoria_id, \
-         admin_id, instagram, facebook, fotos, turnos_habilitados, descripcion, \
-         cuit, constancia_cuit_url, verificado, verificado_estado, lat, lng, modo_contacto) \
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,COALESCE($16,'sin_solicitar'),$17::numeric,$18::numeric,COALESCE($19,'ambos')) RETURNING id",
+        "INSERT INTO empresa (nombre, direccion, slogan, duracion_turno_min, rubro_id, usuario_id, \
+         turnos_habilitados, descripcion, cuit, url_cuit, verificado, verificado_estado, lat, lng, modo_contacto) \
+         VALUES ($1,$2,$3,$4::int2,$5,$6,$7,$8,$9,$10,$11,COALESCE($12,'sin_solicitar'),$13::numeric,$14::numeric,COALESCE($15,'ambos')) RETURNING id",
     )
-    .bind(&body.nombre)
-    .bind(&body.direccion)
-    .bind(&body.telefono)
-    .bind(&body.slogan)
+    .bind(body.nombre.trim())
+    .bind(body.direccion.trim())
+    .bind(limpio(&body.slogan))
     .bind(body.duracion_turno_min)
-    .bind(body.categoria_id)
-    .bind(admin_id)
-    .bind(&body.instagram)
-    .bind(&body.facebook)
-    .bind(body.fotos.unwrap_or_default())
+    .bind(body.rubro_id)
+    .bind(usuario_id)
     .bind(body.turnos_habilitados.unwrap_or(true))
-    .bind(&body.descripcion)
+    .bind(limpio(&body.descripcion))
     .bind(cuit.as_deref())
-    .bind(body.constancia_cuit_url.as_deref())
+    .bind(limpio(&body.url_cuit))
     .bind(verificado)
     .bind(estado.as_deref())
     .bind(body.lat)
@@ -797,9 +1185,7 @@ pub async fn create_empresa(
     .fetch_one(&mut *tx)
     .await
     .map_err(fk_a_bad_request)?;
-    if let Some(lista) = &etiquetas {
-        reemplazar_etiquetas(&mut tx, id, lista).await?;
-    }
+    guardar_contacto(&mut tx, id, &body, &etiquetas).await?;
     tx.commit().await?;
 
     Ok((
@@ -812,7 +1198,7 @@ pub async fn create_empresa(
 fn fk_a_bad_request(e: sqlx::Error) -> AppError {
     match &e {
         sqlx::Error::Database(d) if d.code().as_deref() == Some("23503") => {
-            AppError::BadRequest("La categoría indicada no existe".into())
+            AppError::BadRequest("El rubro indicado no existe".into())
         }
         _ => AppError::Db(e),
     }
@@ -823,17 +1209,15 @@ pub(crate) async fn verificar_dueno(
     user: &CurrentUser,
     empresa_id: i32,
 ) -> AppResult<()> {
-    let admin_id =
-        sqlx::query_scalar::<_, Option<i32>>("SELECT admin_id FROM empresas WHERE id = $1")
+    let dueno =
+        sqlx::query_scalar::<_, Option<i32>>("SELECT usuario_id FROM empresa WHERE id = $1")
             .bind(empresa_id)
             .fetch_optional(&state.db)
             .await?
             .ok_or(AppError::NotFound("Empresa no encontrada".into()))?;
 
-    if user.rol != "superadmin" && admin_id != Some(user.id) {
-        return Err(AppError::Forbidden(
-            "No podés editar una empresa que no es tuya".into(),
-        ));
+    if user.rol != "superadmin" && dueno != Some(user.id) {
+        return Err(AppError::sin_permisos());
     }
     Ok(())
 }
@@ -847,10 +1231,10 @@ pub async fn update_empresa(
     validar_ficha(&body)?;
     verificar_dueno(&state, &user, id).await?;
 
-    // Solo un superadmin puede reasignar el dueño; para el resto, admin_id no se toca. Los campos
+    // Solo un superadmin puede reasignar el dueño; para el resto, usuario_id no se toca. Los campos
     // opcionales ausentes (fotos, turnos_habilitados, descripcion, etiquetas) conservan su valor.
-    let nuevo_admin = if user.rol == "superadmin" {
-        body.admin_id
+    let nuevo_dueno = if user.rol == "superadmin" {
+        body.usuario_id
     } else {
         None
     };
@@ -866,32 +1250,28 @@ pub async fn update_empresa(
 
     let mut tx = state.db.begin().await?;
     sqlx::query(
-        "UPDATE empresas SET nombre=$1, direccion=$2, telefono=$3, slogan=$4, duracion_turno_min=$5, \
-         categoria_id=$6, admin_id=COALESCE($7, admin_id), instagram=$8, facebook=$9, \
-         fotos=COALESCE($10, fotos), turnos_habilitados=COALESCE($11, turnos_habilitados), \
-         descripcion=COALESCE($12, descripcion), cuit=COALESCE($13, cuit), \
-         constancia_cuit_url=COALESCE($14, constancia_cuit_url), \
-         verificado_estado=COALESCE($15, verificado_estado), \
-         motivo_rechazo=CASE WHEN $15 IS NULL THEN motivo_rechazo ELSE NULL END, \
-         verificado=CASE WHEN $15 IS NULL THEN verificado ELSE ($15 = 'verificado') END, \
-         modo_contacto=COALESCE($16, modo_contacto), \
-         lat=COALESCE($17::numeric, lat), lng=COALESCE($18::numeric, lng) \
-         WHERE id=$19",
+        "UPDATE empresa SET nombre=$1, direccion=$2, slogan=$3, duracion_turno_min=$4::int2, \
+         rubro_id=$5, usuario_id=COALESCE($6, usuario_id), \
+         turnos_habilitados=COALESCE($7, turnos_habilitados), \
+         descripcion=COALESCE($8, descripcion), cuit=COALESCE($9, cuit), \
+         url_cuit=COALESCE($10, url_cuit), \
+         verificado_estado=COALESCE($11, verificado_estado), \
+         motivo_rechazo=CASE WHEN $11 IS NULL THEN motivo_rechazo ELSE NULL END, \
+         verificado=CASE WHEN $11 IS NULL THEN verificado ELSE ($11 = 'verificado') END, \
+         modo_contacto=COALESCE($12, modo_contacto), \
+         lat=COALESCE($13::numeric, lat), lng=COALESCE($14::numeric, lng) \
+         WHERE id=$15",
     )
-    .bind(&body.nombre)
-    .bind(&body.direccion)
-    .bind(&body.telefono)
-    .bind(&body.slogan)
+    .bind(body.nombre.trim())
+    .bind(body.direccion.trim())
+    .bind(limpio(&body.slogan))
     .bind(body.duracion_turno_min)
-    .bind(body.categoria_id)
-    .bind(nuevo_admin)
-    .bind(&body.instagram)
-    .bind(&body.facebook)
-    .bind(&body.fotos)
+    .bind(body.rubro_id)
+    .bind(nuevo_dueno)
     .bind(body.turnos_habilitados)
-    .bind(&body.descripcion)
+    .bind(body.descripcion.as_deref().map(str::trim))
     .bind(cuit.as_deref())
-    .bind(body.constancia_cuit_url.as_deref())
+    .bind(limpio(&body.url_cuit))
     .bind(nuevo_estado.as_deref())
     .bind(modo_contacto)
     .bind(body.lat)
@@ -900,9 +1280,7 @@ pub async fn update_empresa(
     .execute(&mut *tx)
     .await
     .map_err(fk_a_bad_request)?;
-    if let Some(lista) = &etiquetas {
-        reemplazar_etiquetas(&mut tx, id, lista).await?;
-    }
+    guardar_contacto(&mut tx, id, &body, &etiquetas).await?;
     tx.commit().await?;
 
     Ok(Json(fetch_empresa(&state.db, id).await?))
@@ -914,7 +1292,7 @@ pub async fn delete_empresa(
     Path(id): Path<i32>,
 ) -> AppResult<Json<Value>> {
     verificar_dueno(&state, &user, id).await?;
-    let result = sqlx::query("DELETE FROM empresas WHERE id = $1")
+    let result = sqlx::query("DELETE FROM empresa WHERE id = $1")
         .bind(id)
         .execute(&state.db)
         .await;
@@ -923,7 +1301,7 @@ pub async fn delete_empresa(
         Ok(_) => Ok(Json(
             json!({ "message": "Empresa eliminada correctamente" }),
         )),
-        // turnos.empresa_id no tiene ON DELETE CASCADE a propósito: no se borran reservas ajenas en silencio.
+        // turno.empresa_id no tiene ON DELETE CASCADE a propósito: no se borran reservas ajenas en silencio.
         Err(sqlx::Error::Database(d)) if d.code().as_deref() == Some("23503") => Err(
             AppError::Conflict("La empresa tiene turnos registrados y no puede eliminarse".into()),
         ),
@@ -934,8 +1312,11 @@ pub async fn delete_empresa(
 #[derive(Deserialize)]
 pub struct TelefonoInput {
     numero: String,
-    etiqueta: Option<String>,
-    modo_contacto: Option<String>,
+    descripcion: Option<String>,
+    canal: Option<String>,
+    es_whatsapp: Option<bool>,
+    /// Si ninguno viene marcado, el principal es el primero de la lista.
+    principal: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -943,46 +1324,18 @@ pub struct TelefonosRequest {
     telefonos: Vec<TelefonoInput>,
 }
 
+/// Reemplaza todos los teléfonos del comercio (el principal incluido).
 pub async fn update_telefonos_empresa(
     user: CurrentUser,
     State(state): State<AppState>,
     Path(id): Path<i32>,
     AppJson(body): AppJson<TelefonosRequest>,
 ) -> AppResult<Json<Vec<Telefono>>> {
-    if body.telefonos.iter().any(|t| t.numero.trim().is_empty()) {
-        return Err(AppError::BadRequest(
-            "Cada teléfono necesita un número".into(),
-        ));
-    }
-    for t in &body.telefonos {
-        validar_modo_contacto(&t.modo_contacto)?;
-    }
+    validar_telefonos(&body.telefonos)?;
     verificar_dueno(&state, &user, id).await?;
 
     let mut tx = state.db.begin().await?;
-    sqlx::query("DELETE FROM telefonos_empresa WHERE empresa_id = $1")
-        .bind(id)
-        .execute(&mut *tx)
-        .await?;
-    for t in &body.telefonos {
-        let etiqueta = t
-            .etiqueta
-            .as_deref()
-            .map(str::trim)
-            .filter(|s| !s.is_empty());
-        let modo_contacto = validar_modo_contacto(&t.modo_contacto)?;
-        // ON CONFLICT: el mismo número repetido en el formulario no debe romper con un 500.
-        sqlx::query(
-            "INSERT INTO telefonos_empresa (empresa_id, numero, etiqueta, modo_contacto) \
-             VALUES ($1, $2, $3, $4) ON CONFLICT (empresa_id, numero) DO NOTHING",
-        )
-        .bind(id)
-        .bind(t.numero.trim())
-        .bind(etiqueta)
-        .bind(modo_contacto)
-        .execute(&mut *tx)
-        .await?;
-    }
+    reemplazar_telefonos(&mut tx, id, &body.telefonos).await?;
     tx.commit().await?;
 
     get_telefonos_by_empresa(State(state), Path(id)).await
@@ -999,7 +1352,10 @@ pub struct TurnoRecibido {
     cliente_nombre: String,
     /// Canal de contacto: el correo de la cuenta o el que dejó la persona al agendar sin cuenta.
     cliente_email: Option<String>,
-    /// true si el comercio lo cargó a mano para alguien sin cuenta.
+    /// 'online' (reserva del cliente) o 'mostrador' (lo cargó el comercio, sin cuenta).
+    origen: String,
+    nota: Option<String>,
+    /// true si el comercio lo cargó a mano para alguien sin cuenta (origen 'mostrador').
     sin_cuenta: bool,
 }
 
@@ -1011,12 +1367,13 @@ pub async fn get_turnos_empresa(
 ) -> AppResult<Json<Vec<TurnoRecibido>>> {
     verificar_dueno(&state, &user, id).await?;
     let rows = sqlx::query_as::<_, TurnoRecibido>(
-        "SELECT t.id, t.fecha, t.hora, t.estado, \
-                COALESCE(u.nombre, t.cliente_nombre) AS cliente_nombre, \
-                COALESCE(u.email, t.cliente_email) AS cliente_email, \
-                (t.usuario_id IS NULL) AS sin_cuenta \
-         FROM turnos t LEFT JOIN usuarios u ON u.id = t.usuario_id \
-         WHERE t.empresa_id = $1 AND t.estado <> 'cancelado' AND t.fecha >= $2 \
+        "SELECT t.id, t.fecha, t.hora, et.nombre AS estado, \
+                COALESCE(u.nombre, t.cliente_nombre)::text AS cliente_nombre, \
+                COALESCE(u.email, t.cliente_email)::text AS cliente_email, \
+                t.origen, t.nota, (t.origen = 'mostrador') AS sin_cuenta \
+         FROM turno t JOIN estado_turno et ON et.id = t.estado_turno_id \
+         LEFT JOIN usuario u ON u.id = t.usuario_id \
+         WHERE t.empresa_id = $1 AND et.nombre <> 'cancelado' AND t.fecha >= $2 \
          ORDER BY t.fecha, t.hora",
     )
     .bind(id)
@@ -1056,20 +1413,19 @@ pub async fn calificar_empresa(
             "El comentario no puede superar los 1000 caracteres".into(),
         ));
     }
-    let dueno = sqlx::query_scalar::<_, Option<i32>>("SELECT admin_id FROM empresas WHERE id = $1")
+    let dueno = sqlx::query_scalar::<_, Option<i32>>("SELECT usuario_id FROM empresa WHERE id = $1")
         .bind(id)
         .fetch_optional(&state.db)
         .await?
         .ok_or(AppError::NotFound("Empresa no encontrada".into()))?;
     if dueno == Some(user.id) {
-        return Err(AppError::Forbidden(
-            "No podés calificar tu propio comercio".into(),
-        ));
+        return Err(AppError::sin_permisos_por("no podés calificar tu propio comercio"));
     }
 
     // RF-13: la reseña es de un turno del propio cliente, ya realizado y no cancelado.
     let turno = sqlx::query_as::<_, (i32, NaiveDate, NaiveTime, String)>(
-        "SELECT empresa_id, fecha, hora, estado FROM turnos WHERE id = $1 AND usuario_id = $2",
+        "SELECT t.empresa_id, t.fecha, t.hora, et.nombre::text FROM turno t \
+         JOIN estado_turno et ON et.id = t.estado_turno_id WHERE t.id = $1 AND t.usuario_id = $2",
     )
     .bind(body.turno_id)
     .bind(user.id)
@@ -1093,7 +1449,7 @@ pub async fn calificar_empresa(
     }
 
     sqlx::query(
-        "INSERT INTO calificaciones (usuario_id, empresa_id, turno_id, puntaje, comentario) \
+        "INSERT INTO calificacion (usuario_id, empresa_id, turno_id, puntaje, comentario) \
          VALUES ($1, $2, $3, $4, $5) \
          ON CONFLICT (turno_id) WHERE turno_id IS NOT NULL \
          DO UPDATE SET puntaje = EXCLUDED.puntaje, comentario = EXCLUDED.comentario",
@@ -1128,7 +1484,7 @@ pub async fn get_calificaciones(
 ) -> AppResult<Json<Vec<CalificacionPublica>>> {
     let rows = sqlx::query_as::<_, CalificacionPublica>(
         "SELECT u.nombre AS usuario_nombre, k.puntaje, k.comentario, k.creado_en \
-         FROM calificaciones k JOIN usuarios u ON u.id = k.usuario_id \
+         FROM calificacion k JOIN usuario u ON u.id = k.usuario_id \
          WHERE k.empresa_id = $1 ORDER BY k.creado_en DESC LIMIT 50",
     )
     .bind(id)
@@ -1145,13 +1501,17 @@ pub struct PuntoMapa {
     nombre: String,
     lat: f64,
     lng: f64,
-    categoria_id: i32,
+    rubro_id: i32,
     verificado: bool,
+    slug: Option<String>,
 }
 
+/// Los mismos filtros que el listado, para que el mapa muestre lo que se buscó.
 #[derive(Deserialize)]
 pub struct MapaQuery {
-    categoria_id: Option<i32>,
+    rubro_id: Option<i32>,
+    q: Option<String>,
+    etiquetas: Option<String>,
 }
 
 /// Solo los comercios geolocalizados y solo lo mínimo para dibujar los marcadores; la ficha
@@ -1160,15 +1520,16 @@ pub async fn get_mapa(
     State(state): State<AppState>,
     Query(f): Query<MapaQuery>,
 ) -> AppResult<Json<Vec<PuntoMapa>>> {
-    let rows = sqlx::query_as::<_, PuntoMapa>(
-        "SELECT e.id, e.nombre, e.lat::float8 AS lat, e.lng::float8 AS lng, e.categoria_id, e.verificado \
-         FROM empresas e \
-         WHERE e.lat IS NOT NULL AND e.lng IS NOT NULL \
-           AND ($1::int IS NULL OR e.categoria_id = $1 OR EXISTS \
-                (SELECT 1 FROM empresa_categorias ec WHERE ec.empresa_id = e.id AND ec.categoria_id = $1)) \
-         ORDER BY e.id",
-    )
-    .bind(f.categoria_id)
+    let rows = sqlx::query_as::<_, PuntoMapa>(&format!(
+        "SELECT e.id, e.nombre, e.lat::float8 AS lat, e.lng::float8 AS lng, e.rubro_id, e.verificado, e.slug \
+         FROM empresa e LEFT JOIN rubro r ON r.id = e.rubro_id \
+         WHERE e.lat IS NOT NULL AND e.lng IS NOT NULL AND {} \
+         {ORDEN_LISTADO}",
+        filtro_directorio(1, 2, 3)
+    ))
+    .bind(f.q.as_deref().and_then(expandir_busqueda))
+    .bind(f.rubro_id)
+    .bind(etiquetas_filtro(&f.etiquetas))
     .fetch_all(&state.db)
     .await?;
     Ok(Json(rows))
@@ -1223,7 +1584,7 @@ mod tests {
     #[test]
     fn el_listado_no_incluye_la_descripcion_pero_la_ficha_si() {
         assert!(read_select(false, false).contains("NULL::text AS descripcion"));
-        assert!(read_select(true, false).contains("e.descripcion AS descripcion"));
+        assert!(read_select(true, false).contains("e.descripcion::text AS descripcion"));
         assert!(read_select(false, true).contains("AS distancia_km"));
         assert!(read_select(false, false).contains("AS etiquetas"));
         assert!(!read_select(false, false).contains("e.lat::float8 - $8"));

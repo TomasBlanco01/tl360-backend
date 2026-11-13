@@ -68,7 +68,7 @@ pub async fn suscribir(
 ) -> AppResult<(StatusCode, Json<Value>)> {
     validar(&body)?;
     let id = sqlx::query_scalar::<_, i32>(
-        "INSERT INTO push_suscripciones (usuario_id, endpoint, p256dh, auth) \
+        "INSERT INTO push_suscripcion (usuario_id, endpoint, p256dh, auth) \
          VALUES ($1, $2, $3, $4) \
          ON CONFLICT (endpoint) DO UPDATE SET \
            usuario_id = EXCLUDED.usuario_id, p256dh = EXCLUDED.p256dh, \
@@ -90,7 +90,7 @@ pub async fn desuscribir(
     State(state): State<AppState>,
     AppJson(body): AppJson<BajaRequest>,
 ) -> AppResult<StatusCode> {
-    sqlx::query("DELETE FROM push_suscripciones WHERE usuario_id = $1 AND endpoint = $2")
+    sqlx::query("DELETE FROM push_suscripcion WHERE usuario_id = $1 AND endpoint = $2")
         .bind(user.id)
         .bind(body.endpoint.trim())
         .execute(&state.db)

@@ -31,12 +31,30 @@ const jwt = (payload, secret) => {
 };
 
 const cli = (await login("cliente@demo.com")).data;
+const negocio = (await login("negocio@demo.com")).data;
+if (!cli?.token || !negocio?.token) {
+  console.error(`No se pudo iniciar sesión con las cuentas de demostración en ${B}: ¿está el backend corriendo y cargados los seeds?`);
+  process.exit(1);
+}
 const TC = cli.token;
+const TN = negocio.token;
+
+// Comercio de prueba: el de negocio@demo.com con turnos habilitados. Si esa cuenta no tuviera uno,
+// cualquiera con turnos habilitados. No depende del nombre ni de la cantidad de comercios cargados.
+const emps = (await call("GET", "/empresas?limit=1000")).data ?? [];
+const deNegocio = emps.filter((e) => e.usuario_id === negocio.user.id);
+const propia = deNegocio.find((e) => e.turnos_habilitados) ?? deNegocio[0];
+const conTurnos = propia?.turnos_habilitados ? propia : emps.find((e) => e.turnos_habilitados);
+if (!propia || !conTurnos) {
+  console.error(`Faltan datos para auditar: ${!propia ? "negocio@demo.com no tiene comercio" : "ningún comercio tiene turnos habilitados"} (${emps.length} comercios cargados).`);
+  process.exit(1);
+}
+console.log(`Comercio de prueba: ${propia.nombre} (#${propia.id})${conTurnos !== propia ? `; turnos en ${conTurnos.nombre}` : ""}`);
 
 console.log("== Autorización ==");
 const email = `audit${Date.now()}@test.com`;
-const reg = await call("POST", "/auth/register", { body: { nombre: "Intruso", email, contraseña: "clave123", rol: "superadmin" } });
-const tokEsc = (await login(email, "clave123")).data?.token;
+const reg = await call("POST", "/auth/register", { body: { nombre: "Intruso", email, contraseña: "Clave1234", rol: "superadmin" } });
+const tokEsc = (await login(email, "Clave1234")).data?.token;
 const puedeListar = tokEsc ? (await call("GET", "/usuarios", { token: tokEsc })).status === 200 : false;
 check("el registro público NO permite elegir rol (escalada a superadmin)", !(reg.status === 201 && puedeListar), reg.status === 201 && puedeListar ? "un anónimo se registró como superadmin y lista usuarios" : "");
 
@@ -45,24 +63,24 @@ check("un token firmado con el secreto por defecto no es aceptado", (await call(
 check("token con alg=none rechazado", (await call("GET", "/usuarios", { token: `${Buffer.from('{"alg":"none"}').toString("base64url")}.${Buffer.from('{"id":1,"nombre":"x","rol":"superadmin","exp":9999999999}').toString("base64url")}.` })).status === 401);
 check("token vencido rechazado", (await call("GET", "/usuarios", { token: jwt({ id: 1, nombre: "x", rol: "superadmin", exp: 1000 }, "otro") })).status === 401);
 
-const emps = (await call("GET", "/empresas?limit=400")).data;
-const ajena = emps.find((e) => e.admin_id && e.admin_id !== 3);
-check("un cliente no puede borrar un comercio ajeno", (await call("DELETE", `/empresas/${ajena.id}`, { token: TC })).status === 403);
-const propia = emps.find((e) => e.nombre.startsWith("CRIA"));
-check("calificar el propio comercio no está permitido", (await call("POST", `/empresas/${propia.id}/calificaciones`, { token: (await login("negocio@demo.com")).data.token, body: { turno_id: 0, puntaje: 5 } })).status === 403);
-check("un cliente no puede crear comercios a nombre de otro (admin_id ignorado)", await (async () => {
-  const r = await call("POST", "/empresas", { token: TC, body: { nombre: "Test", direccion: "x", categoria_id: propia.categoria_id, admin_id: 1 } });
+const borrarAjena = await call("DELETE", `/empresas/${propia.id}`, { token: TC });
+check("un cliente no puede borrar un comercio ajeno (403 con mensaje de permisos)", borrarAjena.status === 403 && /permisos/.test(borrarAjena.data?.error ?? ""), borrarAjena.data?.error);
+check("calificar el propio comercio no está permitido", (await call("POST", `/empresas/${propia.id}/calificaciones`, { token: TN, body: { turno_id: 0, puntaje: 5 } })).status === 403);
+check("un cliente no puede crear comercios a nombre de otro (usuario_id ignorado)", await (async () => {
+  const r = await call("POST", "/empresas", { token: TC, body: { nombre: "Test", direccion: "x", rubro_id: propia.rubro_id, usuario_id: 1 } });
   if (r.status !== 201) return true;
-  const ok = r.data.admin_id === cli.user.id; await call("DELETE", `/empresas/${r.data.id}`, { token: TC }); return ok;
+  const ok = r.data.usuario_id === cli.user.id; await call("DELETE", `/empresas/${r.data.id}`, { token: TC }); return ok;
 })());
 
 console.log("\n== Autenticación ==");
 const a = await login("cliente@demo.com", "mala"), b = await login("noexiste@demo.com", "mala");
 check("login no revela si el email existe", a.data?.error === b.data?.error, `"${a.data?.error}" vs "${b.data?.error}"`);
 check("registro rechaza contraseñas cortas", (await call("POST", "/auth/register", { body: { nombre: "A", email: `c${Date.now()}@t.com`, contraseña: "1" } })).status === 400);
-check("registro rechaza emails inválidos", (await call("POST", "/auth/register", { body: { nombre: "A", email: "no-es-email", contraseña: "clave123" } })).status === 400);
+for (const malo of ["no-es-email", "a..b@test.com", "a@test", "a@-test.com", "a,b@test.com"]) {
+  check(`registro rechaza el email inválido "${malo}"`, (await call("POST", "/auth/register", { body: { nombre: "A", email: malo, contraseña: "Clave1234" } })).status === 400);
+}
 const bruto = `bruto${Date.now()}@test.com`;
-await call("POST", "/auth/register", { body: { nombre: "Bruto", email: bruto, contraseña: "clave123" } });
+await call("POST", "/auth/register", { body: { nombre: "Bruto", email: bruto, contraseña: "Clave1234" } });
 const t0 = Date.now();
 await Promise.all(Array.from({ length: 4 }, () => login(bruto, "mala")));
 const durLogins = Date.now() - t0;
@@ -78,34 +96,51 @@ check("limit negativo → no es un 500", (await call("GET", "/empresas?limit=-5"
 check("offset negativo → no es un 500", (await call("GET", "/empresas?offset=-5")).status < 500);
 check("limit enorme se acota", (await call("GET", "/empresas?limit=99999999")).data.length <= 1000, "devuelve todo el catálogo si piden un limit gigante");
 check("inyección SQL en q no rompe nada", (await call("GET", "/empresas?q=" + encodeURIComponent("'; DROP TABLE empresas;--"))).status === 200 && (await call("GET", "/empresas?limit=1")).status === 200);
-check("id no numérico → 4xx", (await call("GET", "/empresas/abc")).status === 400);
+check("id o slug inexistente → 404", (await call("GET", "/empresas/abc")).status === 404);
 check("JSON inválido → respuesta JSON con error", (await call("POST", "/auth/login", { raw: "{malo" })).data !== null, "el cuerpo del error no es JSON (el front espera {error})");
 check("cuerpo enorme rechazado", await (async () => { try { return [413, 400].includes((await call("POST", "/auth/login", { raw: JSON.stringify({ email: "a", contraseña: "x".repeat(3_000_000) }) })).status); } catch { return true; } })());
 check("contraseña larguísima no cuelga bcrypt", (await login("cliente@demo.com", "x".repeat(100_000))).ms < 2000);
-const url = await call("PUT", `/empresas/${propia.id}`, { token: (await login("negocio@demo.com")).data.token, body: { nombre: propia.nombre, direccion: propia.direccion, categoria_id: propia.categoria_id, telefono: propia.telefono, slogan: propia.slogan, duracion_turno_min: propia.duracion_turno_min, turnos_habilitados: propia.turnos_habilitados, instagram: "javascript:alert(1)" } });
-check("instagram/facebook solo aceptan http(s)", url.status === 400, "se guardó una URL javascript: (XSS si el front la usa como href)");
-check("imagen de publicidad solo acepta http(s)", (await call("POST", "/publicidades", { token: (await login("negocio@demo.com")).data.token, body: { empresa_id: propia.id, titulo: "x", imagen_url: "javascript:alert(1)" } })).status === 400);
+const url = await call("PUT", `/empresas/${propia.id}`, { token: TN, body: { nombre: propia.nombre, direccion: propia.direccion, rubro_id: propia.rubro_id, redes_sociales: [{ tipo: "instagram", url: "javascript:alert(1)" }] } });
+check("las redes sociales solo aceptan http(s)", url.status === 400, "se guardó una URL javascript: (XSS si el front la usa como href)");
+check("imagen de publicidad solo acepta http(s)", (await call("POST", "/publicidades", { token: TN, body: { empresa_id: propia.id, titulo: "x", descripcion: "x", url_imagen: "javascript:alert(1)" } })).status === 400);
+check("teléfono con letras rechazado", (await call("PUT", `/empresas/${propia.id}/telefonos`, { token: TN, body: { telefonos: [{ numero: "javascript:1" }] } })).status === 400);
 
 console.log("\n== Reglas de negocio ==");
+// Fechas y horas elegidas según el horario real del comercio de prueba (no se suponen días fijos).
 const proximo = (diaSemana, desde) => { let d = new Date(Date.now() + desde * 864e5); while (d.getDay() !== diaSemana) d = new Date(+d + 864e5); return d.toISOString().slice(0, 10); };
-const neg = (await login("negocio@demo.com")).data.token;
-const hor = (await call("GET", `/empresas/horarios/${propia.id}`)).data;
-const fechaLun = proximo(0, 10); // domingo
-check("no se reserva un día en que el comercio no atiende", (await call("POST", "/turnos/reservar", { token: TC, body: { empresa_id: propia.id, fecha: fechaLun, hora: "10:00" } })).status === 400, `domingo ${fechaLun}, horarios: ${Object.keys(hor).join(",")}`);
-const dia = proximo(2, 12); // martes
-check("no se reserva de madrugada (fuera de horario)", (await call("POST", "/turnos/reservar", { token: TC, body: { empresa_id: propia.id, fecha: dia, hora: "03:00" } })).status === 400);
-const rr = await call("POST", "/turnos/reservar", { token: TC, body: { empresa_id: propia.id, fecha: dia, hora: "09:07" } });
-check("no se reservan horarios desalineados de la grilla del comercio", rr.status === 400, `09:07 → ${rr.status}`);
-check("cancelar conserva el historial (estado 'cancelado') y libera el horario", await (async () => {
-  const f = proximo(4, 13); // jueves
-  const r = await call("POST", "/turnos/reservar", { token: TC, body: { empresa_id: propia.id, fecha: f, hora: "16:00" } });
-  if (r.status !== 200) return false;
-  const mis = (await call("GET", "/turnos/mis-turnos", { token: TC })).data.find((t) => t.fecha.startsWith(f));
-  await call("DELETE", `/turnos/cancelar/${mis.id}`, { token: TC });
-  const con = (await call("GET", "/turnos/mis-turnos?incluir_cancelados=true", { token: TC })).data.find((t) => t.id === mis.id);
-  const sin = (await call("GET", "/turnos/mis-turnos", { token: TC })).data.some((t) => t.id === mis.id);
-  return con?.estado === "cancelado" && !sin;
-})());
+const hor = (await call("GET", `/empresas/horarios/${conTurnos.id}`)).data;
+const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const cerrado = DIAS.findIndex((d) => !hor[d]?.length);
+const abierto = DIAS.findIndex((d) => hor[d]?.length);
+const reservarEn = (fecha, hora) => call("POST", "/turnos/reservar", { token: TC, body: { empresa_id: conTurnos.id, fecha, hora } });
+if (abierto < 0) {
+  check("el comercio de prueba tiene horarios cargados", false, conTurnos.nombre);
+} else {
+  const [apertura] = hor[DIAS[abierto]][0].split("-");
+  const paso = conTurnos.duracion_turno_min ?? 30;
+  const sumarMin = (hhmm, min) => { const [h, m] = hhmm.split(":").map(Number); const t = h * 60 + m + min; return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+  if (cerrado >= 0) {
+    const fechaCerrado = proximo(cerrado, 10);
+    check("no se reserva un día en que el comercio no atiende", (await reservarEn(fechaCerrado, apertura)).status === 400, `${DIAS[cerrado]} ${fechaCerrado}, atiende: ${Object.keys(hor).join(",")}`);
+  }
+  const dia = proximo(abierto, 12);
+  check("no se reserva de madrugada (fuera de horario)", (await reservarEn(dia, "03:00")).status === 400);
+  const desalineada = sumarMin(apertura, 7);
+  const rr = await reservarEn(dia, desalineada);
+  check("no se reservan horarios desalineados de la grilla del comercio", rr.status === 400, `${desalineada} → ${rr.status}`);
+  check("cancelar conserva el historial (estado 'cancelado') y libera el horario", await (async () => {
+    const f = proximo(abierto, 13 + 7);
+    const h = sumarMin(apertura, paso);
+    const r = await reservarEn(f, h);
+    if (r.status !== 200) return false;
+    const mis = (await call("GET", "/turnos/mis-turnos", { token: TC })).data.find((t) => t.fecha.startsWith(f) && t.hora.startsWith(h));
+    await call("DELETE", `/turnos/cancelar/${mis.id}`, { token: TC });
+    const con = (await call("GET", "/turnos/mis-turnos?incluir_cancelados=true", { token: TC })).data.find((t) => t.id === mis.id);
+    const sin = (await call("GET", "/turnos/mis-turnos", { token: TC })).data.some((t) => t.id === mis.id);
+    const libre = !(await call("GET", `/turnos/ocupados?empresa_id=${conTurnos.id}&fecha=${f}`)).data.some((o) => o.hora === h);
+    return con?.estado === "cancelado" && !sin && libre;
+  })());
+}
 
 console.log("\n== Operación ==");
 check("CORS no es abierto a cualquier origen", (await fetch(B + "/empresas?limit=1", { headers: { Origin: "https://sitio-malicioso.com" } })).headers.get("access-control-allow-origin") !== "*");

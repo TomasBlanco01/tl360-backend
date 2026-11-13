@@ -4,8 +4,8 @@ use axum::{
 };
 
 use crate::handlers::{
-    atenciones, auth, categorias, empresas, favoritos, health, moderacion, publicidades, push,
-    solicitudes, turnos, usuarios,
+    auth, difusiones, empresas, favoritos, health, moderacion, publicidades, push, resumen, rubros,
+    turnos, usuarios,
 };
 use crate::state::AppState;
 
@@ -29,21 +29,19 @@ pub fn build(state: AppState) -> Router {
                     get(usuarios::get_usuarios).post(usuarios::crear_usuario),
                 )
                 .route("/yo", put(usuarios::actualizar_perfil))
+                .route("/:id", put(usuarios::gestionar_usuario))
                 .route(
                     "/yo/recordatorio",
                     get(usuarios::get_recordatorio).put(usuarios::set_recordatorio),
                 ),
         )
         .nest(
-            "/categorias",
+            "/rubros",
             Router::new()
-                .route(
-                    "/",
-                    get(categorias::get_categorias).post(categorias::crear_categoria),
-                )
+                .route("/", get(rubros::get_rubros).post(rubros::crear_rubro))
                 .route(
                     "/:id",
-                    put(categorias::actualizar_categoria).delete(categorias::eliminar_categoria),
+                    put(rubros::actualizar_rubro).delete(rubros::eliminar_rubro),
                 ),
         )
         .nest(
@@ -54,10 +52,7 @@ pub fn build(state: AppState) -> Router {
                     get(empresas::get_empresas).post(empresas::create_empresa),
                 )
                 .route("/mapa", get(empresas::get_mapa))
-                .route(
-                    "/categoria/:categoria_id",
-                    get(empresas::get_empresas_by_categoria),
-                )
+                .route("/rubro/:rubro_id", get(empresas::get_empresas_by_rubro))
                 .route(
                     "/horarios/:empresa_id",
                     get(empresas::get_horarios_by_empresa),
@@ -67,11 +62,7 @@ pub fn build(state: AppState) -> Router {
                     "/:id/turnos",
                     get(empresas::get_turnos_empresa).post(turnos::cargar_turno),
                 )
-                .route(
-                    "/:id/atenciones",
-                    get(atenciones::listar).post(atenciones::crear),
-                )
-                .route("/:id/atenciones/:atencion_id", delete(atenciones::eliminar))
+                .route("/:id/resumen", get(resumen::get_resumen))
                 .route("/:id/verificado", put(moderacion::set_verificado))
                 .route("/:id/verificacion", put(moderacion::set_verificacion))
                 .route("/:id/reportes", post(moderacion::crear_reporte))
@@ -94,13 +85,15 @@ pub fn build(state: AppState) -> Router {
             "/publicidades",
             Router::new()
                 .route("/", get(publicidades::listar).post(publicidades::crear))
-                .route("/:id", delete(publicidades::eliminar)),
+                .route("/:id", delete(publicidades::eliminar))
+                .route("/:id/estado", put(publicidades::cambiar_estado)),
         )
         .nest(
-            "/solicitudes-publicidad",
+            "/difusiones",
             Router::new()
-                .route("/", post(solicitudes::crear).get(solicitudes::listar))
-                .route("/:id", put(solicitudes::actualizar)),
+                .route("/", post(difusiones::crear).get(difusiones::listar))
+                .route("/:id", delete(difusiones::eliminar))
+                .route("/:id/estado", put(difusiones::cambiar_estado)),
         )
         .nest(
             "/reportes",

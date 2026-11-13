@@ -6,6 +6,6 @@ if (!archivo) { console.error('uso: node apply_seed.mjs <archivo.sql>'); process
 const c = new pg.Client(process.env.DATABASE_URL ?? 'postgres://postgres:postgres@127.0.0.1:5433/tl360');
 await c.connect();
 await c.query(fs.readFileSync(archivo, 'utf8'));
-const r = await c.query('select count(*) total, count(lat) con_coordenadas from empresas');
+const r = await c.query('select count(*) total, count(lat) con_coordenadas from empresa');
 console.log('empresas:', r.rows[0]);
 await c.end();

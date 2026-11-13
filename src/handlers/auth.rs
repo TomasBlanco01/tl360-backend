@@ -58,7 +58,7 @@ struct UsuarioConHash {
     id: i32,
     nombre: String,
     email: String,
-    #[sqlx(rename = "contraseña")]
+    #[sqlx(rename = "contrasena_hash")]
     contrasena: String,
     rol: String,
     email_verificado: bool,
@@ -85,22 +85,22 @@ pub async fn register(
     };
 
     let existente =
-        sqlx::query_scalar::<_, i32>("SELECT id FROM usuarios WHERE lower(email) = lower($1)")
-            .bind(&body.email)
+        sqlx::query_scalar::<_, i32>("SELECT id FROM usuario WHERE lower(email) = lower($1)")
+            .bind(body.email.trim())
             .fetch_optional(&state.db)
             .await?;
     if existente.is_some() {
-        return Err(AppError::BadRequest("El correo ya está registrado".into()));
+        return Err(AppError::Conflict("Ese correo ya está registrado".into()));
     }
 
     let hash = bcrypt::hash(&body.contrasena, bcrypt::DEFAULT_COST)?;
 
     let user = sqlx::query_as::<_, UsuarioPublico>(
-        r#"INSERT INTO usuarios (nombre, email, "contraseña", rol)
+        r#"INSERT INTO usuario (nombre, email, contrasena_hash, rol)
            VALUES ($1, $2, $3, $4)
            RETURNING id, nombre, email, rol, email_verificado"#,
     )
-    .bind(&body.nombre)
+    .bind(body.nombre.trim())
     .bind(body.email.trim())
     .bind(&hash)
     .bind(rol)
@@ -112,12 +112,11 @@ pub async fn register(
     let token = emitir_token_verificacion(&state, user.id).await?;
     enviar_correo_verificacion(&state, &user.nombre, &user.email, &token).await;
 
-    Ok((
-        StatusCode::CREATED,
-        Json(
-            json!({ "message": "Usuario registrado correctamente. Te enviamos un correo para verificar tu cuenta.", "user": user }),
-        ),
-    ))
+    let mut respuesta = json!({ "message": "Usuario registrado correctamente. Te enviamos un correo para verificar tu cuenta.", "user": user });
+    if let Some(token) = token_para_desarrollo(&state, &token) {
+        respuesta["token_verificacion"] = json!(token);
+    }
+    Ok((StatusCode::CREATED, Json(respuesta)))
 }
 
 /// Token opaco de 256 bits y su hash SHA-256 (lo que se guarda en la base).
@@ -135,14 +134,14 @@ pub(crate) async fn emitir_token_verificacion(state: &AppState, usuario_id: i32)
     let (token, token_hash) = generar_token();
     let mut tx = state.db.begin().await?;
     sqlx::query(
-        "UPDATE tokens_usuario SET usado_en = now() \
+        "UPDATE token_usuario SET usado_en = now() \
          WHERE usuario_id = $1 AND tipo = 'verificar_email' AND usado_en IS NULL",
     )
     .bind(usuario_id)
     .execute(&mut *tx)
     .await?;
     sqlx::query(
-        "INSERT INTO tokens_usuario (usuario_id, tipo, token_hash, expira_en) \
+        "INSERT INTO token_usuario (usuario_id, tipo, token_hash, expira_en) \
          VALUES ($1, 'verificar_email', $2, now() + interval '1 hour')",
     )
     .bind(usuario_id)
@@ -171,14 +170,14 @@ async fn emitir_token_reset(state: &AppState, usuario_id: i32) -> AppResult<Stri
     let (token, token_hash) = generar_token();
     let mut tx = state.db.begin().await?;
     sqlx::query(
-        "UPDATE tokens_usuario SET usado_en = now() \
+        "UPDATE token_usuario SET usado_en = now() \
          WHERE usuario_id = $1 AND tipo = 'reset_password' AND usado_en IS NULL",
     )
     .bind(usuario_id)
     .execute(&mut *tx)
     .await?;
     sqlx::query(
-        "INSERT INTO tokens_usuario (usuario_id, tipo, token_hash, expira_en) \
+        "INSERT INTO token_usuario (usuario_id, tipo, token_hash, expira_en) \
          VALUES ($1, 'reset_password', $2, now() + interval '1 hour')",
     )
     .bind(usuario_id)
@@ -217,9 +216,9 @@ pub async fn login(
         }
     }
     let user = sqlx::query_as::<_, UsuarioConHash>(
-        r#"SELECT id, nombre, email, "contraseña", rol, email_verificado FROM usuarios WHERE lower(email) = lower($1)"#,
+        r#"SELECT id, nombre, email, contrasena_hash, rol, email_verificado FROM usuario WHERE lower(email) = lower($1)"#,
     )
-    .bind(&body.email)
+    .bind(body.email.trim())
     .fetch_optional(&state.db)
     .await?;
 
@@ -281,7 +280,7 @@ pub async fn verificar_email(
     let mut tx = state.db.begin().await?;
 
     let usuario_id = sqlx::query_scalar::<_, i32>(
-        "UPDATE tokens_usuario SET usado_en = now() \
+        "UPDATE token_usuario SET usado_en = now() \
          WHERE token_hash = $1 AND tipo = 'verificar_email' AND usado_en IS NULL AND expira_en > now() \
          RETURNING usuario_id",
     )
@@ -290,7 +289,7 @@ pub async fn verificar_email(
     .await?
     .ok_or(AppError::BadRequest("El enlace de verificación es inválido o venció".into()))?;
 
-    sqlx::query("UPDATE usuarios SET email_verificado = true WHERE id = $1")
+    sqlx::query("UPDATE usuario SET email_verificado = true WHERE id = $1")
         .bind(usuario_id)
         .execute(&mut *tx)
         .await?;
@@ -326,20 +325,29 @@ pub async fn reenviar_verificacion(
         state.limiter.registrar(&clave);
     }
     let pendiente = sqlx::query_as::<_, (i32, String, String)>(
-        "SELECT id, nombre, email FROM usuarios WHERE lower(email) = lower($1) AND NOT email_verificado",
+        "SELECT id, nombre, email FROM usuario WHERE lower(email) = lower($1) AND NOT email_verificado",
     )
     .bind(body.email.trim())
     .fetch_optional(&state.db)
     .await?;
 
+    let mut respuesta = json!({ "message": "Si el correo está registrado y pendiente de verificación, te enviamos un nuevo enlace." });
     if let Some((usuario_id, nombre, email)) = pendiente {
         let token = emitir_token_verificacion(&state, usuario_id).await?;
         enviar_correo_verificacion(&state, &nombre, &email, &token).await;
+        if let Some(token) = token_para_desarrollo(&state, &token) {
+            respuesta["token_verificacion"] = json!(token);
+        }
     }
 
-    Ok(Json(
-        json!({ "message": "Si el correo está registrado y pendiente de verificación, te enviamos un nuevo enlace." }),
-    ))
+    Ok(Json(respuesta))
+}
+
+/// Solo en desarrollo (compilación debug) y sin SMTP configurado: el correo no sale, así que el
+/// enlace de verificación vuelve en la respuesta para poder completar el alta (igual que el modo
+/// mock del front). En producción (release) o con SMTP nunca se expone.
+fn token_para_desarrollo(state: &AppState, token: &str) -> Option<String> {
+    (cfg!(debug_assertions) && !state.mailer.configurado()).then(|| token.to_string())
 }
 
 #[derive(Deserialize)]
@@ -374,7 +382,7 @@ pub async fn forgot_password(
         state.limiter.registrar(&clave);
     }
     let usuario = sqlx::query_as::<_, (i32, String, String)>(
-        "SELECT id, nombre, email FROM usuarios WHERE lower(email) = lower($1)",
+        "SELECT id, nombre, email FROM usuario WHERE lower(email) = lower($1)",
     )
     .bind(body.email.trim())
     .fetch_optional(&state.db)
@@ -407,7 +415,7 @@ pub async fn reset_password(
     // El UPDATE ... RETURNING marca el token como usado y lo devuelve en un solo paso: dos pedidos
     // simultáneos con el mismo token no pueden consumirlo ambos.
     let usuario_id = sqlx::query_scalar::<_, i32>(
-        "UPDATE tokens_usuario SET usado_en = now() \
+        "UPDATE token_usuario SET usado_en = now() \
          WHERE token_hash = $1 AND tipo = 'reset_password' AND usado_en IS NULL AND expira_en > now() \
          RETURNING usuario_id",
     )
@@ -417,7 +425,7 @@ pub async fn reset_password(
     .ok_or(AppError::BadRequest("El enlace de recuperación es inválido o venció".into()))?;
 
     let hash = bcrypt::hash(&body.contrasena, bcrypt::DEFAULT_COST)?;
-    sqlx::query(r#"UPDATE usuarios SET "contraseña" = $1 WHERE id = $2"#)
+    sqlx::query(r#"UPDATE usuario SET contrasena_hash = $1 WHERE id = $2"#)
         .bind(hash)
         .bind(usuario_id)
         .execute(&mut *tx)

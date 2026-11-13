@@ -16,16 +16,16 @@ const comercios = fs.existsSync(path.join(raiz, "db/seed/02_empresas.sql")) ? "0
 for (const s of ["01_rubros", comercios, "03_simulados"]) await run(`db/seed/${s}.sql`);
 
 const q = async (s) => (await db.query(s)).rows;
-for (const t of ["usuarios", "categorias", "empresas", "empresa_categorias", "telefonos_empresa", "horarios_empresa", "calificaciones", "etiquetas", "empresa_etiquetas", "publicaciones_destacadas", "solicitudes_publicidad", "atenciones_mostrador", "turnos"])
+for (const t of ["usuario", "rubro", "empresa", "telefono_empresa", "red_social", "foto_empresa", "horario_empresa", "calificacion", "etiqueta", "empresa_etiqueta", "publicidad", "difusion", "turno"])
   console.log(t.padEnd(26), (await q(`select count(*)::int n from ${t}`))[0].n);
-console.log("empresas sin horarios:", (await q("select count(*)::int n from empresas e where not exists (select 1 from horarios_empresa h where h.empresa_id=e.id)"))[0].n);
+console.log("empresas sin horarios:", (await q("select count(*)::int n from empresa e where not exists (select 1 from horario_empresa h where h.empresa_id=e.id)"))[0].n);
 
 // RF-03 + RF-05: un solo turno activo por horario; cancelado libera el horario
-const emp = (await q("select id from empresas where turnos_habilitados limit 1"))[0].id;
-const usr = (await q("select id from usuarios where email = 'cliente@demo.com'"))[0].id;
+const emp = (await q("select id from empresa where turnos_habilitados limit 1"))[0].id;
+const usr = (await q("select id from usuario where email = 'cliente@demo.com'"))[0].id;
 const ins = () => db.query(
-  "insert into turnos (empresa_id,usuario_id,fecha,hora) values ($1,$2,'2030-01-08','10:00') on conflict (empresa_id,fecha,hora) where estado <> 'cancelado' do nothing returning id", [emp, usr]);
+  "insert into turno (empresa_id,usuario_id,fecha,hora) values ($1,$2,'2030-01-08','10:00') on conflict (empresa_id,fecha,hora) where estado_turno_id <> 2 do nothing returning id", [emp, usr]);
 const a = await ins(), b = await ins();
 console.log("primer turno:", a.rows.length, "· segundo mismo horario (debe ser 0):", b.rows.length);
-await db.query("update turnos set estado = 'cancelado' where id = $1", [a.rows[0].id]);
+await db.query("update turno set estado_turno_id = 2 where id = $1", [a.rows[0].id]);
 console.log("tras cancelar, se puede reservar de nuevo (debe ser 1):", (await ins()).rows.length);

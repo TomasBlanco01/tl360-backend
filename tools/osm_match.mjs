@@ -13,7 +13,7 @@ for (const p of osm) {
 	for (const e of hits) filas.push(`  ('todotrenque', '${e.origen_id}', ${(+lat).toFixed(6)}, ${(+lng).toFixed(6)})`);
 }
 const sql = `-- Generado por tools/osm_match.mjs. Coordenadas © colaboradores de OpenStreetMap (ODbL), vía Overpass; cruce por nombre.
-UPDATE empresas e SET lat = v.lat, lng = v.lng
+UPDATE empresa e SET lat = v.lat, lng = v.lng
 FROM (VALUES
 ${filas.join(',\n')}
 ) AS v(origen, origen_id, lat, lng)

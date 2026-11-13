@@ -10,7 +10,7 @@ use crate::state::AppState;
 
 pub async fn listar(user: CurrentUser, State(state): State<AppState>) -> AppResult<Json<Vec<i32>>> {
     let ids = sqlx::query_scalar::<_, i32>(
-        "SELECT empresa_id FROM favoritos WHERE usuario_id = $1 ORDER BY creado_en",
+        "SELECT empresa_id FROM favorito WHERE usuario_id = $1 ORDER BY creado_en",
     )
     .bind(user.id)
     .fetch_all(&state.db)
@@ -25,12 +25,10 @@ pub async fn agregar(
 ) -> AppResult<Json<Value>> {
     // RF-10: los favoritos son del cliente; un dueño o un superadmin no los usa.
     if user.rol != "cliente" {
-        return Err(AppError::Forbidden(
-            "Los favoritos son para cuentas de cliente".into(),
-        ));
+        return Err(AppError::sin_permisos_por("los favoritos son para cuentas de cliente"));
     }
     sqlx::query(
-        "INSERT INTO favoritos (usuario_id, empresa_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        "INSERT INTO favorito (usuario_id, empresa_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
     )
     .bind(user.id)
     .bind(empresa_id)
@@ -50,7 +48,7 @@ pub async fn quitar(
     State(state): State<AppState>,
     Path(empresa_id): Path<i32>,
 ) -> AppResult<Json<Value>> {
-    sqlx::query("DELETE FROM favoritos WHERE usuario_id = $1 AND empresa_id = $2")
+    sqlx::query("DELETE FROM favorito WHERE usuario_id = $1 AND empresa_id = $2")
         .bind(user.id)
         .bind(empresa_id)
         .execute(&state.db)

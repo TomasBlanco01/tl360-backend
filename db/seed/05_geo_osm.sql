@@ -1,5 +1,5 @@
 -- Generado por tools/osm_match.mjs. Coordenadas © colaboradores de OpenStreetMap (ODbL), vía Overpass; cruce por nombre.
-UPDATE empresas e SET lat = v.lat, lng = v.lng
+UPDATE empresa e SET lat = v.lat, lng = v.lng
 FROM (VALUES
   ('todotrenque', '580', -35.972773, -62.733537),
   ('todotrenque', '581', -35.972462, -62.733796),
