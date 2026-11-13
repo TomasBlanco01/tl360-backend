@@ -57,7 +57,7 @@ for (const e of listado) {
 	if (g) filas.push(`  ('todotrenque', '${e.origen_id}', ${g.lat.toFixed(6)}, ${g.lng.toFixed(6)})`);
 }
 const sql = `-- Generado por tools/geocode.mjs. Coordenadas © colaboradores de OpenStreetMap (ODbL), obtenidas con Nominatim.
-UPDATE empresas e SET lat = v.lat, lng = v.lng
+UPDATE empresa e SET lat = v.lat, lng = v.lng
 FROM (VALUES
 ${filas.join(',\n')}
 ) AS v(origen, origen_id, lat, lng)
